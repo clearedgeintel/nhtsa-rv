@@ -224,27 +224,29 @@ export default function App() {
       </main>
 
       {/* Composer */}
-      <footer className="shrink-0 border-t border-slate-200 bg-white/80 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80">
+      <footer className="shrink-0 border-t border-slate-200 bg-gradient-to-b from-slate-100 to-slate-200 px-4 py-4 dark:border-slate-700 dark:from-slate-900 dark:to-slate-950 sm:px-6">
         <form
           onSubmit={(e) => {
             e.preventDefault();
             send(input);
           }}
-          className="mx-auto flex w-full max-w-4xl items-center gap-2 px-4 py-3 sm:px-6"
+          className="mx-auto flex w-full max-w-4xl items-center gap-2 rounded-2xl border border-slate-300 bg-white p-2 pl-5 shadow-xl ring-1 ring-black/5 transition focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-300 dark:border-slate-600 dark:bg-slate-800 dark:ring-white/5 dark:focus-within:ring-emerald-700"
         >
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about a make, model year, defect, or trend…"
             disabled={loading}
-            className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-emerald-900/40 dark:disabled:bg-slate-800/50"
+            aria-label="Ask a question"
+            className="flex-1 bg-transparent text-[15px] outline-none placeholder:text-slate-400 disabled:opacity-60 dark:text-slate-100 dark:placeholder:text-slate-500"
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-700 disabled:opacity-40"
           >
             Ask
+            <span aria-hidden className="text-base leading-none">→</span>
           </button>
         </form>
       </footer>
