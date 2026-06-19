@@ -43,6 +43,24 @@ export type FailureModeRow = {
   makes: number;
 };
 
+/** Slicer state for the Explore taxonomy browser. null = "All" / unbounded. */
+export type ExploreFilters = {
+  make: string | null;
+  my_from: number | null;
+  my_to: number | null;
+  recv_from: number | null;
+  recv_to: number | null;
+};
+
+/** Option sources for the Explore slicers (from v_explore_makes / v_explore_bounds). */
+export type ExploreOptions = {
+  makes: string[];
+  my_min: number;
+  my_max: number;
+  recv_min: number;
+  recv_max: number;
+};
+
 /** Data-refresh status shown in the header (from app_meta). */
 export type DataStatus = {
   refreshed_at: string;

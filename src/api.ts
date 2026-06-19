@@ -1,4 +1,12 @@
-import type { AskResponse, ChatMessage, DataStatus, FailureModeRow, Grounding } from "./types";
+import type {
+  AskResponse,
+  ChatMessage,
+  DataStatus,
+  ExploreFilters,
+  ExploreOptions,
+  FailureModeRow,
+  Grounding,
+} from "./types";
 
 const FN_URL = import.meta.env.VITE_ASK_FUNCTION_URL as string;
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -81,40 +89,69 @@ export async function askAgentStream(
 }
 
 const restHeaders = () => ({ apikey: ANON, Authorization: `Bearer ${ANON}` });
+const rpcHeaders = () => ({ ...restHeaders(), "Content-Type": "application/json" });
 
-/** Explore: failure-mode summary (counts + severity split) for the heatmap. */
-export async function getFailureModes(): Promise<FailureModeRow[]> {
+/** Map slicer state → the NULL-tolerant RPC param names shared by all three RPCs. */
+function rpcFilterArgs(f?: ExploreFilters) {
+  return {
+    p_make: f?.make ?? null,
+    p_my_from: f?.my_from ?? null,
+    p_my_to: f?.my_to ?? null,
+    p_recv_from: f?.recv_from ?? null,
+    p_recv_to: f?.recv_to ?? null,
+  };
+}
+
+async function callRpc<T>(fn: string, body: Record<string, unknown>): Promise<T[]> {
   if (!SUPABASE_URL || !ANON) return [];
   try {
-    const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/v_failure_mode_summary?select=*&order=complaints.desc`,
-      { headers: restHeaders() },
-    );
-    return r.ok ? ((await r.json()) as FailureModeRow[]) : [];
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+      method: "POST",
+      headers: rpcHeaders(),
+      body: JSON.stringify(body),
+    });
+    return r.ok ? ((await r.json()) as T[]) : [];
   } catch {
     return [];
   }
 }
 
-/** Explore: top components + makes for one failure mode (drill-down). */
-export async function getModeBreakdown(mode: string): Promise<{
+/** Explore: failure-mode summary (counts + severity split) for the heatmap, sliced by filters. */
+export async function getFailureModes(filters?: ExploreFilters): Promise<FailureModeRow[]> {
+  const rows = await callRpc<FailureModeRow>("rpc_failure_mode_summary", rpcFilterArgs(filters));
+  return rows.sort((a, b) => b.complaints - a.complaints);
+}
+
+/** Explore: top components + makes for one failure mode (drill-down), sliced by filters. */
+export async function getModeBreakdown(
+  mode: string,
+  filters?: ExploreFilters,
+): Promise<{
   components: { component: string; n: number }[];
   makes: { make_canonical: string; n: number }[];
 }> {
-  const enc = encodeURIComponent(mode);
-  const empty = { components: [], makes: [] };
-  if (!SUPABASE_URL || !ANON) return empty;
+  const args = { p_mode: mode, ...rpcFilterArgs(filters) };
+  const [components, makes] = await Promise.all([
+    callRpc<{ component: string; n: number }>("rpc_failure_mode_component", args),
+    callRpc<{ make_canonical: string; n: number }>("rpc_failure_mode_make", args),
+  ]);
+  return { components, makes };
+}
+
+/** Explore: option sources for the slicers (brand list + model-year / received-year bounds). */
+export async function getExploreOptions(): Promise<ExploreOptions | null> {
+  if (!SUPABASE_URL || !ANON) return null;
   try {
-    const [c, m] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/v_failure_mode_component?failure_mode=eq.${enc}&select=component,n&order=n.desc&limit=8`, { headers: restHeaders() }),
-      fetch(`${SUPABASE_URL}/rest/v1/v_failure_mode_make?failure_mode=eq.${enc}&select=make_canonical,n&order=n.desc&limit=8`, { headers: restHeaders() }),
+    const [mk, bd] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/v_explore_makes?select=make_canonical&order=n.desc`, { headers: restHeaders() }),
+      fetch(`${SUPABASE_URL}/rest/v1/v_explore_bounds?select=*`, { headers: restHeaders() }),
     ]);
-    return {
-      components: c.ok ? await c.json() : [],
-      makes: m.ok ? await m.json() : [],
-    };
+    const makes = mk.ok ? ((await mk.json()) as { make_canonical: string }[]).map((r) => r.make_canonical) : [];
+    const b = bd.ok ? ((await bd.json()) as ExploreOptions[])[0] : null;
+    if (!b) return null;
+    return { makes, my_min: b.my_min, my_max: b.my_max, recv_min: b.recv_min, recv_max: b.recv_max };
   } catch {
-    return empty;
+    return null;
   }
 }
 
