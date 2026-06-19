@@ -183,6 +183,12 @@ export default function App() {
         <div className="absolute inset-0 bg-slate-950/70" />
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-950/40" />
         <div className="relative mx-auto flex w-full max-w-4xl items-start justify-between px-4 py-6 sm:px-6 [text-shadow:0_1px_3px_rgb(0_0_0_/_70%)]">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <img
+              src="/rv.png"
+              alt="RV Defect Intelligence"
+              className="h-14 w-14 shrink-0 rounded-xl object-cover shadow-lg ring-2 ring-white/40 sm:h-16 sm:w-16 [text-shadow:none]"
+            />
           <div>
             <span className="rounded-md bg-emerald-500/25 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-200 ring-1 ring-emerald-400/40 [text-shadow:none]">
               NHTSA · RV
@@ -218,6 +224,7 @@ export default function App() {
                 </button>
               ))}
             </div>
+          </div>
           </div>
           <button
             onClick={() => setDark((d) => !d)}
