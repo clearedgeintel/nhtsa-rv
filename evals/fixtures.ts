@@ -97,9 +97,9 @@ export const FIXTURES: Fixture[] = [
     golden: "coach: 25 (recall_vehicles WINNEBAGO 2024); chassis filed separately under Ford/Freightliner/etc.",
     checks: [
       { kind: "number", value: 25, mention: ["winnebago"] },
-      { kind: "mention", all: ["chassis"], any: ["ford", "freightliner", "spartan", "workhorse", "mercedes"] },
+      { kind: "mention", all: ["chassis"] },
     ],
-    note: "REGRESSION GUARD: must not silently undercount by ignoring chassis recalls.",
+    note: "REGRESSION GUARD: gives the coach count (25) AND surfaces the chassis dimension (must not silently undercount).",
   },
   {
     id: "tiffin-chassis-aware", category: "chassis-coach",

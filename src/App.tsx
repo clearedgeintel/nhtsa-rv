@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { askAgent, groundingOf, getDataStatus } from "./api";
+import { askAgentStream, groundingOf, getDataStatus } from "./api";
 import type { ChatMessage, DataStatus } from "./types";
 import { AssistantMessage } from "./components/AssistantMessage";
 
@@ -64,26 +64,45 @@ export default function App() {
     const q = question.trim();
     if (!q || loading) return;
     const history = messages;
-    setMessages((m) => [...m, { role: "user", content: q }]);
+    setMessages((m) => [
+      ...m,
+      { role: "user", content: q },
+      { role: "assistant", content: "", question: q, streaming: true, status: "Thinking…" },
+    ]);
     setInput("");
     setLoading(true);
 
-    const res = await askAgent(q, history);
-    setMessages((m) => [
-      ...m,
-      res.error
-        ? { role: "assistant", content: `⚠️ ${res.error}`, isError: true }
-        : {
-            role: "assistant",
-            content: res.answer || "(no answer returned)",
-            question: q,
-            grounding: groundingOf(res),
-            sources: res.sources,
-            sql_used: res.sql_used,
-            narrative_hits: res.narrative_hits,
-            charts: res.charts,
-          },
-    ]);
+    // Update the most recent assistant message in place as the stream arrives.
+    const setLast = (fn: (msg: ChatMessage) => ChatMessage) =>
+      setMessages((m) => {
+        const c = [...m];
+        for (let i = c.length - 1; i >= 0; i--) {
+          if (c[i].role === "assistant") {
+            c[i] = fn(c[i]);
+            break;
+          }
+        }
+        return c;
+      });
+
+    await askAgentStream(q, history, {
+      onText: (d) => setLast((msg) => ({ ...msg, content: msg.content + d, status: undefined })),
+      onStatus: (label) => setLast((msg) => ({ ...msg, status: label })),
+      onDone: (r) =>
+        setLast((msg) => ({
+          ...msg,
+          content: r.answer || msg.content,
+          sources: r.sources,
+          sql_used: r.sql_used,
+          narrative_hits: r.narrative_hits,
+          charts: r.charts,
+          grounding: groundingOf(r),
+          streaming: false,
+          status: undefined,
+        })),
+      onError: (e) =>
+        setLast((msg) => ({ ...msg, content: `⚠️ ${e}`, isError: true, streaming: false, status: undefined })),
+    });
     setLoading(false);
   }
 
@@ -206,18 +225,6 @@ export default function App() {
                   )}
                 </li>
               ))}
-              {loading && (
-                <li className="flex justify-start">
-                  <div className="flex items-center gap-2 rounded-2xl rounded-bl-sm bg-white px-4 py-3 text-sm text-slate-600 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">
-                    <span className="inline-flex gap-1">
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-emerald-500 [animation-delay:-0.3s]" />
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-emerald-500 [animation-delay:-0.15s]" />
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-emerald-500" />
-                    </span>
-                    Querying the data…
-                  </div>
-                </li>
-              )}
             </ul>
           )}
         </div>

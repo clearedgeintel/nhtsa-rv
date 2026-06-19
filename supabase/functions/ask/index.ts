@@ -1,6 +1,8 @@
 // supabase/functions/ask — the natural-language RV defect agent (CLAUDE.md §6).
-// Browser POSTs { question, history }. We run a Claude tool-use loop server-side (keys never
-// leave here) and return { answer, sources, sql_used, narrative_hits } for the provenance panel.
+// Browser POSTs { question, history, stream? }. Runs a Claude tool-use loop server-side
+// (keys never leave here). Returns either:
+//   • JSON  { answer, sources, sql_used, narrative_hits, charts }   (default; evals/curl)
+//   • SSE   data: {type:"text"|"status"|"done"|"error", ...}        (when stream:true)
 
 import Anthropic from "@anthropic-ai/sdk";
 import { buildSystemPrompt } from "./domain.ts";
@@ -52,6 +54,60 @@ async function runTool(name: string, input: any): Promise<unknown> {
   return { error: `Unknown tool ${name}` };
 }
 
+type Emit = (e: Record<string, unknown>) => void;
+type AgentResult = {
+  answer: string; sources: string[]; sql_used: string[]; narrative_hits: unknown[]; charts: ChartSpec[];
+};
+
+/** The agent loop. Streams text/status via `emit` and returns the final result. */
+async function runAgent(anthropic: Anthropic, messages: Anthropic.MessageParam[], emit: Emit): Promise<AgentResult> {
+  const sqlUsed: string[] = [];
+  const narrativeHits: unknown[] = [];
+  const charts: ChartSpec[] = [];
+  const sources = new Set<string>();
+  let answer = "";
+
+  for (let step = 0; step < MAX_STEPS; step++) {
+    const stream = anthropic.messages.stream({
+      model: MODEL,
+      max_tokens: 2048,
+      system: buildSystemPrompt(),
+      tools: TOOL_DEFS as Anthropic.Tool[],
+      messages,
+    });
+    for await (const ev of stream) {
+      if (ev.type === "content_block_delta" && (ev.delta as any).type === "text_delta") {
+        emit({ type: "text", delta: (ev.delta as any).text });
+      }
+    }
+    const msg = await stream.finalMessage();
+    messages.push({ role: "assistant", content: msg.content });
+    const txt = msg.content.filter((b) => b.type === "text").map((b: any) => b.text).join("\n").trim();
+    if (txt) answer = answer ? `${answer}\n${txt}` : txt;
+    if (msg.stop_reason !== "tool_use") break;
+
+    const toolResults: Anthropic.ToolResultBlockParam[] = [];
+    for (const block of msg.content) {
+      if (block.type !== "tool_use") continue;
+      emit({ type: "status", tool: block.name });
+      const result = await runTool(block.name, block.input);
+      collectIds(result, sources);
+      if (block.name === "execute_sql" && (result as any)?.sql_used) sqlUsed.push((result as any).sql_used);
+      if (block.name === "search_narratives" && (result as any)?.hits) narrativeHits.push(...(result as any).hits);
+      if (block.name === "render_chart" && (result as any)?.chart) charts.push((result as any).chart);
+      toolResults.push({
+        type: "tool_result",
+        tool_use_id: block.id,
+        content: JSON.stringify(result).slice(0, 60_000),
+      });
+    }
+    messages.push({ role: "user", content: toolResults });
+  }
+
+  if (!answer) answer = "I wasn't able to finish within the step limit. Please narrow the question.";
+  return { answer, sources: [...sources], sql_used: sqlUsed, narrative_hits: narrativeHits, charts };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
@@ -73,49 +129,37 @@ Deno.serve(async (req) => {
     { role: "user", content: question },
   ];
 
-  const sqlUsed: string[] = [];
-  const narrativeHits: unknown[] = [];
-  const charts: ChartSpec[] = [];
-  const sources = new Set<string>();
+  const wantStream =
+    body?.stream === true || (req.headers.get("accept") ?? "").includes("text/event-stream");
 
-  try {
-    for (let step = 0; step < MAX_STEPS; step++) {
-      const res = await anthropic.messages.create({
-        model: MODEL,
-        max_tokens: 2048,
-        system: buildSystemPrompt(),
-        tools: TOOL_DEFS as Anthropic.Tool[],
-        messages,
-      });
-      messages.push({ role: "assistant", content: res.content });
-
-      if (res.stop_reason !== "tool_use") {
-        const answer = res.content.filter((b) => b.type === "text").map((b: any) => b.text).join("\n").trim();
-        return json({ answer, sources: [...sources], sql_used: sqlUsed, narrative_hits: narrativeHits, charts });
-      }
-
-      // Execute each requested tool and feed results back.
-      const toolResults: Anthropic.ToolResultBlockParam[] = [];
-      for (const block of res.content) {
-        if (block.type !== "tool_use") continue;
-        const result = await runTool(block.name, block.input);
-        collectIds(result, sources);
-        if (block.name === "execute_sql" && (result as any)?.sql_used) sqlUsed.push((result as any).sql_used);
-        if (block.name === "search_narratives" && (result as any)?.hits) narrativeHits.push(...(result as any).hits);
-        if (block.name === "render_chart" && (result as any)?.chart) charts.push((result as any).chart);
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: block.id,
-          content: JSON.stringify(result).slice(0, 60_000),
-        });
-      }
-      messages.push({ role: "user", content: toolResults });
+  // Non-streaming JSON (default — used by evals, curl, and any client that omits stream).
+  if (!wantStream) {
+    try {
+      const result = await runAgent(anthropic, messages, () => {});
+      return json(result);
+    } catch (e) {
+      return json({ error: `Agent error: ${String((e as Error)?.message ?? e)}` }, 500);
     }
-    return json({
-      answer: "I wasn't able to finish within the step limit. Please narrow the question.",
-      sources: [...sources], sql_used: sqlUsed, narrative_hits: narrativeHits, charts,
-    });
-  } catch (e) {
-    return json({ error: `Agent error: ${String((e as Error)?.message ?? e)}` }, 500);
   }
+
+  // Server-Sent Events.
+  const enc = new TextEncoder();
+  const sse = new ReadableStream({
+    async start(controller) {
+      const emit: Emit = (e) => {
+        try { controller.enqueue(enc.encode(`data: ${JSON.stringify(e)}\n\n`)); } catch { /* closed */ }
+      };
+      try {
+        const result = await runAgent(anthropic, messages, emit);
+        emit({ type: "done", ...result });
+      } catch (e) {
+        emit({ type: "error", error: `Agent error: ${String((e as Error)?.message ?? e)}` });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+  return new Response(sse, {
+    headers: { ...cors, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
+  });
 });

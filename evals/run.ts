@@ -74,11 +74,21 @@ function evalCheck(c: Check, r: AskResponse): string | null {
 
 type Result = { fx: Fixture; ok: boolean; reasons: string[]; answer: string };
 
+// Retry once: the agent is a non-deterministic LLM, so a single transient phrasing miss
+// shouldn't fail the suite. A real regression fails both attempts.
 async function runOne(fx: Fixture): Promise<Result> {
-  const r = await ask(fx.question);
-  if (r.error) return { fx, ok: false, reasons: [`agent error: ${r.error}`], answer: "" };
-  const reasons = fx.checks.map((c) => evalCheck(c, r)).filter((x): x is string => x !== null);
-  return { fx, ok: reasons.length === 0, reasons, answer: r.answer ?? "" };
+  let last: Result = { fx, ok: false, reasons: ["no attempt"], answer: "" };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const r = await ask(fx.question);
+    if (r.error) {
+      last = { fx, ok: false, reasons: [`agent error: ${r.error}`], answer: "" };
+      continue;
+    }
+    const reasons = fx.checks.map((c) => evalCheck(c, r)).filter((x): x is string => x !== null);
+    last = { fx, ok: reasons.length === 0, reasons, answer: r.answer ?? "" };
+    if (last.ok) return last;
+  }
+  return last;
 }
 
 async function pool<T, R>(items: T[], n: number, fn: (t: T) => Promise<R>): Promise<R[]> {

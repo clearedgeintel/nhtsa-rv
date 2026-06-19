@@ -51,4 +51,6 @@ export type ChatMessage = {
   grounding?: Grounding;
   question?: string; // the user question this answers (for feedback)
   isError?: boolean;
+  streaming?: boolean; // answer is still arriving
+  status?: string; // current step label while streaming (e.g. "Querying the data…")
 };
