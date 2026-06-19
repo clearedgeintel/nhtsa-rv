@@ -2,6 +2,7 @@ import type {
   AskResponse,
   ChatMessage,
   ComplaintDetail,
+  Dashboard,
   DataStatus,
   ExploreFilters,
   ExploreOptions,
@@ -166,6 +167,25 @@ export async function getExploreOptions(): Promise<ExploreOptions | null> {
     const b = bd.ok ? ((await bd.json()) as ExploreOptions[])[0] : null;
     if (!b) return null;
     return { makes, my_min: b.my_min, my_max: b.my_max, recv_min: b.recv_min, recv_max: b.recv_max };
+  } catch {
+    return null;
+  }
+}
+
+/** Sidebar dashboard: recall trend + top components + top makes (anon-safe aggregate views). */
+export async function getDashboard(): Promise<Dashboard | null> {
+  if (!SUPABASE_URL || !ANON) return null;
+  try {
+    const [t, c, m] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/v_dash_recall_trend?select=year,recalls&order=year.asc`, { headers: restHeaders() }),
+      fetch(`${SUPABASE_URL}/rest/v1/v_dash_top_components?select=component,n&order=n.desc`, { headers: restHeaders() }),
+      fetch(`${SUPABASE_URL}/rest/v1/v_dash_top_makes?select=make_canonical,recalls&order=recalls.desc`, { headers: restHeaders() }),
+    ]);
+    return {
+      trend: t.ok ? await t.json() : [],
+      components: c.ok ? await c.json() : [],
+      makes: m.ok ? await m.json() : [],
+    };
   } catch {
     return null;
   }

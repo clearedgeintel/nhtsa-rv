@@ -73,6 +73,13 @@ export type ExploreOptions = {
   recv_max: number;
 };
 
+/** Aggregates for the persistent sidebar dashboard. */
+export type Dashboard = {
+  trend: { year: number; recalls: number }[];
+  components: { component: string; n: number }[];
+  makes: { make_canonical: string; recalls: number }[];
+};
+
 /** Data-refresh status shown in the header (from app_meta). */
 export type DataStatus = {
   refreshed_at: string;

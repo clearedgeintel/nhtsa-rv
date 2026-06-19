@@ -54,7 +54,9 @@ nice-to-haves: loading skeletons, fuller ARIA/keyboard nav.
 - **Supabase Auth** → per-user history, "My RV" saved profiles.
 - **Saved searches / watchlists + email alerts** ("new Winnebago Class A recalls 2020–2024")
   via Supabase cron + an Edge Function mailer.
-- **Persistent sidebar dashboard** — top defect components, recall trend sparkline, top makes.
+- ✅ **Persistent sidebar dashboard** — recall-trend sparkline, top defect components, top makes;
+  each item clicks through to a scoped Ask question. Shipped 2026-06-19 (`Sidebar.tsx`,
+  `v_dash_*` views in `0013_dashboard_views.sql`).
 - ✅ **Report export** — "Report" button on any answer → branded, print-optimized PDF
   (Markdown + charts + NHTSA-linked sources) via the browser; no new deps. Shipped 2026-06-19.
 

@@ -4,6 +4,7 @@ import type { ChatMessage, DataStatus } from "./types";
 import { AssistantMessage } from "./components/AssistantMessage";
 import { ReportView } from "./components/ReportView";
 import { TaxonomyBrowser } from "./components/TaxonomyBrowser";
+import { Sidebar } from "./components/Sidebar";
 
 // Larger pools per category so the Shuffle button surfaces fresh prompts each time.
 const EXAMPLE_GROUPS = [
@@ -164,6 +165,12 @@ export default function App() {
     setLoading(false);
   }
 
+  // Sidebar items jump into the Ask view with a scoped question.
+  const askFromSidebar = (q: string) => {
+    setView("ask");
+    send(q);
+  };
+
   const empty = messages.length === 0;
 
   return (
@@ -221,6 +228,10 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <Sidebar onAsk={askFromSidebar} />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
 
       {view === "explore" ? (
         <main className="flex-1 overflow-y-auto">
@@ -355,6 +366,8 @@ export default function App() {
       </footer>
         </>
       )}
+        </div>
+      </div>
     </div>
     {report && <ReportView message={report} />}
     </>
