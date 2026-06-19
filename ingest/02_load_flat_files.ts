@@ -19,7 +19,10 @@ async function loadSource(key: SourceKey) {
     await download(src.zipUrl, zip);
     await extractZip(zip, extractDir(DATA_DIR, key));
   } catch (e) {
-    if (src.fallbackUrl) {
+    // Try the Socrata fallback if present; if it also fails, skip optional sources rather
+    // than failing the whole run (TSBs is optional and may be unavailable).
+    try {
+      if (!src.fallbackUrl) throw e;
       console.warn(`  ! primary download failed (${String(e)}); trying Socrata fallback`);
       await mkdir(extractDir(DATA_DIR, key), { recursive: true });
       const dest = `${extractDir(DATA_DIR, key)}/${key}.tsv`;
@@ -27,11 +30,12 @@ async function loadSource(key: SourceKey) {
       if (!res.ok) throw new Error(`fallback failed ${res.status}`);
       await writeFile(dest, Buffer.from(await res.arrayBuffer()));
       console.log(`  ↳ saved fallback ${dest}`);
-    } else if (src.optional) {
-      console.warn(`  ! optional source ${key} unavailable (${String(e)}); skipping`);
-      return;
-    } else {
-      throw e;
+    } catch (e2) {
+      if (src.optional) {
+        console.warn(`  ! optional source ${key} unavailable (${String(e2)}); skipping`);
+        return;
+      }
+      throw e2;
     }
   }
   const file = await resolveDataFile(DATA_DIR, key);
