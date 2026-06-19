@@ -1,4 +1,4 @@
-import type { AskResponse, ChatMessage, DataStatus, Grounding } from "./types";
+import type { AskResponse, ChatMessage, DataStatus, FailureModeRow, Grounding } from "./types";
 
 const FN_URL = import.meta.env.VITE_ASK_FUNCTION_URL as string;
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -77,6 +77,44 @@ export async function askAgentStream(
       else if (e.type === "done") h.onDone(e as AskResponse);
       else if (e.type === "error") h.onError(e.error ?? "Agent error");
     }
+  }
+}
+
+const restHeaders = () => ({ apikey: ANON, Authorization: `Bearer ${ANON}` });
+
+/** Explore: failure-mode summary (counts + severity split) for the heatmap. */
+export async function getFailureModes(): Promise<FailureModeRow[]> {
+  if (!SUPABASE_URL || !ANON) return [];
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/v_failure_mode_summary?select=*&order=complaints.desc`,
+      { headers: restHeaders() },
+    );
+    return r.ok ? ((await r.json()) as FailureModeRow[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Explore: top components + makes for one failure mode (drill-down). */
+export async function getModeBreakdown(mode: string): Promise<{
+  components: { component: string; n: number }[];
+  makes: { make_canonical: string; n: number }[];
+}> {
+  const enc = encodeURIComponent(mode);
+  const empty = { components: [], makes: [] };
+  if (!SUPABASE_URL || !ANON) return empty;
+  try {
+    const [c, m] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/v_failure_mode_component?failure_mode=eq.${enc}&select=component,n&order=n.desc&limit=8`, { headers: restHeaders() }),
+      fetch(`${SUPABASE_URL}/rest/v1/v_failure_mode_make?failure_mode=eq.${enc}&select=make_canonical,n&order=n.desc&limit=8`, { headers: restHeaders() }),
+    ]);
+    return {
+      components: c.ok ? await c.json() : [],
+      makes: m.ok ? await m.json() : [],
+    };
+  } catch {
+    return empty;
   }
 }
 

@@ -47,7 +47,7 @@ nice-to-haves: loading skeletons, fuller ARIA/keyboard nav.
 | ✅ **Streaming responses** — SSE through the function (token deltas + tool status) + live UI render with rotating RV-themed "thinking" messages; JSON mode kept for evals | High | M–L | Shipped 2026-06-19 |
 | **Auto-suggested follow-up chips** ("show chart", "filter 2023–2025") | Med | S | Agent returns 2–3 suggestions in the response |
 | **Multi-RV comparison** affordance | Med | S | Already works via the agent; add a UI entry point + example |
-| **Component taxonomy browser** — failure_mode/component frequency heatmaps | Med | M | New read-only view + a simple browse UI |
+| ✅ **Component taxonomy browser** — "Explore" tab: failure-mode × severity frequency heatmap + drill-down to top components/makes (anon-readable aggregate views) | Med | M | Shipped 2026-06-19 |
 
 ## Later — Needs accounts / infrastructure
 

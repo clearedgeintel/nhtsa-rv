@@ -31,6 +31,17 @@ export type AskResponse = {
 /** How well-grounded an answer is, for the trust badge. */
 export type Grounding = "sql" | "semantic" | "none";
 
+/** A failure-mode row for the Explore taxonomy heatmap. */
+export type FailureModeRow = {
+  failure_mode: string;
+  complaints: number;
+  critical: number;
+  severe: number;
+  moderate: number;
+  minor: number;
+  makes: number;
+};
+
 /** Data-refresh status shown in the header (from app_meta). */
 export type DataStatus = {
   refreshed_at: string;
