@@ -42,7 +42,7 @@ nice-to-haves: loading skeletons, fuller ARIA/keyboard nav.
 
 | Item | Value | Effort | Notes |
 |---|---|---|---|
-| **VIN lookup** — decode VIN (vPIC) → make/model/year → that vehicle's recalls/complaints | High | M | New NHTSA API calls; a tool or a pre-step before the agent |
+| ✅ **VIN lookup** — `decode_vin` tool (vPIC) + UI VIN box; decodes chassis make/model/year → recalls/complaints, with the coach-not-in-VIN caveat | High | M | Shipped 2026-06-19 |
 | **Weekly auto-refresh** — Supabase cron delta ingest | High | M | Ingest is already idempotent; add scheduled job + `_discover_makes` review |
 | **Streaming responses** (SSE through the Edge Function + frontend) | High | M–L | Big perceived-latency win on multi-step loops |
 | **Auto-suggested follow-up chips** ("show chart", "filter 2023–2025") | Med | S | Agent returns 2–3 suggestions in the response |

@@ -43,6 +43,19 @@ export const TOOL_DEFS = [
     },
   },
   {
+    name: "decode_vin",
+    description:
+      "Decode a VIN via NHTSA vPIC into make, model, model year, vehicle type, and body class. " +
+      "Call this FIRST whenever the user provides a VIN, then look up recalls/complaints for the " +
+      "decoded make/model/year. Note: a motorhome's VIN is the CHASSIS VIN (vehicle_type often " +
+      "'INCOMPLETE VEHICLE'), so the decoded make is usually the chassis maker — say so.",
+    input_schema: {
+      type: "object",
+      properties: { vin: { type: "string", description: "11–17 character VIN." } },
+      required: ["vin"],
+    },
+  },
+  {
     name: "render_chart",
     description:
       "Attach a simple chart to your answer when results are a comparison across categories " +
@@ -86,6 +99,34 @@ export function renderChart(input: any): { ok: true; chart: ChartSpec } | { erro
     return { error: "Invalid chart: need x_key, at least one y_key, and 2+ data rows." };
   }
   return { ok: true, chart: { type, title, x_key, y_keys, data } };
+}
+
+// ---- decode_vin: NHTSA vPIC VIN decode (trusted external call) ----
+export async function decodeVin(input: { vin: string }): Promise<unknown> {
+  const vin = (input?.vin ?? "").trim().toUpperCase().replace(/\s+/g, "");
+  if (!/^[A-HJ-NPR-Z0-9]{11,17}$/.test(vin)) {
+    return { error: "Invalid VIN: expected 11–17 letters/digits (no I, O, or Q)." };
+  }
+  try {
+    const res = await fetch(
+      `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/${encodeURIComponent(vin)}?format=json`,
+    );
+    if (!res.ok) throw new Error(`vPIC ${res.status}`);
+    const json = await res.json();
+    const r = json?.Results?.[0] ?? {};
+    return {
+      vin,
+      make: r.Make || null,
+      model: r.Model || null,
+      model_year: r.ModelYear || null,
+      vehicle_type: r.VehicleType || null,
+      body_class: r.BodyClass || null,
+      manufacturer: r.Manufacturer || null,
+      note: r.ErrorText || null,
+    };
+  } catch (e) {
+    return { error: `VIN decode failed: ${String((e as Error)?.message ?? e)}` };
+  }
 }
 
 // ---- execute_sql: the cage ----

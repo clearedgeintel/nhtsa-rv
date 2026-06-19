@@ -4,7 +4,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { buildSystemPrompt } from "./domain.ts";
-import { TOOL_DEFS, executeSql, searchNarratives, renderChart, type ChartSpec } from "./tools.ts";
+import { TOOL_DEFS, executeSql, searchNarratives, renderChart, decodeVin, type ChartSpec } from "./tools.ts";
 
 const MODEL = "claude-sonnet-4-6";
 const MAX_STEPS = 8;
@@ -48,6 +48,7 @@ async function runTool(name: string, input: any): Promise<unknown> {
   if (name === "execute_sql") return executeSql(input);
   if (name === "search_narratives") return searchNarratives(input);
   if (name === "render_chart") return renderChart(input);
+  if (name === "decode_vin") return decodeVin(input);
   return { error: `Unknown tool ${name}` };
 }
 

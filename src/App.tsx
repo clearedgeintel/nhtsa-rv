@@ -37,6 +37,7 @@ const EXAMPLE_GROUPS = [
 export default function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [vin, setVin] = useState("");
   const [loading, setLoading] = useState(false);
   const [dark, setDark] = useState(
     () =>
@@ -117,6 +118,40 @@ export default function App() {
         <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
           {empty ? (
             <div className="mx-auto mt-4 max-w-2xl">
+              {/* VIN lookup */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const v = vin.trim().toUpperCase();
+                  if (v.length < 11) return;
+                  send(`Look up the safety recalls and complaints for VIN ${v}.`);
+                  setVin("");
+                }}
+                className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/30"
+              >
+                <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">Look up your RV by VIN</div>
+                <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
+                  Decodes the chassis make / model / year and pulls its recalls & complaints.
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <input
+                    value={vin}
+                    onChange={(e) => setVin(e.target.value.toUpperCase())}
+                    placeholder="17-character VIN"
+                    maxLength={17}
+                    disabled={loading}
+                    className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm uppercase tracking-wide outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-emerald-900/40"
+                  />
+                  <button
+                    type="submit"
+                    disabled={loading || vin.trim().length < 11}
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-40"
+                  >
+                    Look up
+                  </button>
+                </div>
+              </form>
+
               <h2 className="text-center text-lg font-semibold text-slate-700 dark:text-slate-200">
                 What would you like to know?
               </h2>

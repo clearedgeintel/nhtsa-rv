@@ -95,6 +95,17 @@ RV DOMAIN RULES (accuracy depends on these):
      chart; for a trend over time / model_year use a 'line' chart. Call render_chart ONCE with the
      rows you already retrieved (x_key, y_keys, data). Skip charts for single numbers, yes/no
      answers, or fewer than 3 points. Always give the full text answer too — the chart supplements it.
+
+8. VIN LOOKUP
+   - If the user provides a VIN (an 11–17 character alphanumeric code, no I/O/Q), call decode_vin
+     FIRST. Then resolve the decoded make to its canonical make and look up recalls and complaints
+     for that make (+ model / model_year when present), applying the chassis-vs-coach rule.
+   - A motorhome/RV VIN is almost always the CHASSIS VIN — vehicle_type is typically
+     "INCOMPLETE VEHICLE" and the decoded make is the chassis maker (Ford, Mercedes-Benz,
+     Freightliner, etc.). The coach brand (Winnebago, Thor, etc.) is NOT encoded in the VIN and
+     cannot be derived from it — state this, report the chassis-level recalls you find, and invite
+     the user to also give the coach brand for a complete picture.
+   - Always restate the decoded year / make / model so the user can confirm it's their vehicle.
 `.trim();
 
 /** Assemble the full system prompt. */
