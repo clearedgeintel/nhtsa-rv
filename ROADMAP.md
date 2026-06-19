@@ -19,6 +19,8 @@ All six original milestones are complete and the app is deployed-ready:
 - ✅ **Charts** — recharts bar/line via the `render_chart` tool.
 - ✅ **Evals** — `evals/` 24 hand-verified fixtures + dep-free diff runner (`npm run eval`).
 - ✅ **Deploy** — `server.mjs` + `railway.json`; pushed to GitHub for Railway.
+- ✅ **Trust & Polish** — grounded badge (SQL/semantic/none), Export Sources CSV, auto-open
+  provenance, categorized prompts, copy + thumbs feedback (`feedback` table), dark mode.
 
 ## Principles
 
@@ -30,19 +32,11 @@ All six original milestones are complete and the app is deployed-ready:
 
 ---
 
-## Now — Trust & Polish (no new deps, ~1 day total)
+## Now — Trust & Polish ✅ SHIPPED (2026-06-19)
 
-The highest-leverage batch for a safety-data tool. None of these need new dependencies.
-
-| Item | Value | Effort | Touches |
-|---|---|---|---|
-| **Grounded indicator** — green when numbers come from `execute_sql`, amber when semantic-only | High | S | `Provenance.tsx`, answer metadata |
-| **Auto-open provenance** when sources are large / answer is numeric | Med | S | `Provenance.tsx` |
-| **Export Sources CSV** — campaign_ids/odi_ids with direct NHTSA links | High | S | `Provenance.tsx` |
-| **Categorized example prompts** (Recalls / Complaints / Trends / Chassis) | Med | S | `App.tsx` |
-| **Copy answer** + **thumbs up/down** → log to a `feedback` table (feeds evals) | Med | S | `App.tsx`, one migration |
-| **Mobile polish** (padding, sticky composer) + **dark mode** | Med | S–M | `App.tsx`, Tailwind config |
-| **Loading skeletons**, ARIA labels, keyboard nav | Med | S | `App.tsx` |
+Done: grounded badge, auto-open + Export Sources CSV, categorized prompts, copy + thumbs
+feedback (`feedback` table, anon insert-only), dark mode, mobile padding. Remaining small
+nice-to-haves: loading skeletons, fuller ARIA/keyboard nav.
 
 ## Next — Features (each ~a milestone)
 
