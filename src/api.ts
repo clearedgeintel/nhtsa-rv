@@ -186,20 +186,19 @@ export async function getRvNews(): Promise<{ items: NewsItem[]; fetched_at: stri
   }
 }
 
-/** Sidebar dashboard: recall trend + top components + top makes (anon-safe aggregate views). */
-export async function getDashboard(): Promise<Dashboard | null> {
+/** Sidebar dashboard via rpc_dashboard. Pass a make to scope the trend + components to it
+ *  (top makes stays global — it's the picker). Anon-safe, counts only. */
+export async function getDashboard(make?: string | null): Promise<Dashboard | null> {
   if (!SUPABASE_URL || !ANON) return null;
   try {
-    const [t, c, m] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/v_dash_recall_trend?select=year,recalls&order=year.asc`, { headers: restHeaders() }),
-      fetch(`${SUPABASE_URL}/rest/v1/v_dash_top_components?select=component,n&order=n.desc`, { headers: restHeaders() }),
-      fetch(`${SUPABASE_URL}/rest/v1/v_dash_top_makes?select=make_canonical,recalls&order=recalls.desc`, { headers: restHeaders() }),
-    ]);
-    return {
-      trend: t.ok ? await t.json() : [],
-      components: c.ok ? await c.json() : [],
-      makes: m.ok ? await m.json() : [],
-    };
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_dashboard`, {
+      method: "POST",
+      headers: rpcHeaders(),
+      body: JSON.stringify({ p_make: make ?? null }),
+    });
+    if (!r.ok) return null;
+    const d = (await r.json()) as Partial<Dashboard>;
+    return { trend: d.trend ?? [], components: d.components ?? [], makes: d.makes ?? [] };
   } catch {
     return null;
   }
