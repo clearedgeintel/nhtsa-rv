@@ -40,21 +40,21 @@ export async function download(url: string, dest: string): Promise<void> {
 }
 
 /**
- * Extract a .zip into a directory using bsdtar (handles zip).
- * On Windows, resolve System32\tar.exe explicitly — a GNU `tar` from Git on PATH cannot
- * read zips ("does not look like a tar archive").
+ * Extract a .zip into a directory. Picks a zip-capable extractor per platform:
+ *  - Windows: System32\tar.exe (bsdtar) — a GNU `tar` from Git on PATH cannot read zips.
+ *  - Linux/macOS: `unzip` — GNU `tar` on Linux likewise cannot read zips.
  */
 export async function extractZip(zipPath: string, destDir: string): Promise<void> {
   await mkdir(destDir, { recursive: true });
-  const tarBin =
-    process.platform === "win32" && process.env.WINDIR
-      ? `${process.env.WINDIR}\\System32\\tar.exe`
-      : "tar";
+  const [bin, args] =
+    process.platform === "win32"
+      ? [`${process.env.WINDIR ?? "C:\\Windows"}\\System32\\tar.exe`, ["-xf", zipPath, "-C", destDir]]
+      : ["unzip", ["-o", "-q", zipPath, "-d", destDir]];
   await new Promise<void>((resolve, reject) => {
-    const p = spawn(tarBin, ["-xf", zipPath, "-C", destDir], { stdio: "inherit" });
+    const p = spawn(bin, args, { stdio: "inherit" });
     p.on("error", reject);
     p.on("exit", (code) =>
-      code === 0 ? resolve() : reject(new Error(`${tarBin} exited ${code} for ${zipPath}`)),
+      code === 0 ? resolve() : reject(new Error(`${bin} exited ${code} for ${zipPath}`)),
     );
   });
 }
