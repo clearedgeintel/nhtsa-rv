@@ -1,0 +1,55 @@
+name: Weekly NHTSA data refresh
+
+# Re-runs the idempotent ingest pipeline against the live NHTSA flat files and re-stamps
+# the data-refresh status. Runs weekly; can also be triggered manually.
+on:
+  schedule:
+    - cron: "17 8 * * 1" # Mondays 08:17 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: data-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Write .env from secrets
+        run: |
+          cat > .env <<'EOF'
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+          VOYAGE_API_KEY=${{ secrets.VOYAGE_API_KEY }}
+          EOF
+
+      - name: Reference + flat files
+        run: |
+          npm run ingest:01
+          npm run ingest:02
+
+      - name: Filter RV slice (recalls, investigations, complaints)
+        run: npm run ingest:03
+
+      - name: Classify + embed new complaints (delta only)
+        run: |
+          npm run ingest:04 -- --commit
+          npm run ingest:05 -- --commit
+
+      - name: Stamp refresh status
+        run: npm run ingest:stamp
+
+      - name: Clean up env
+        if: always()
+        run: rm -f .env

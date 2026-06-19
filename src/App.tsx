@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { askAgent, groundingOf } from "./api";
-import type { ChatMessage } from "./types";
+import { askAgent, groundingOf, getDataStatus } from "./api";
+import type { ChatMessage, DataStatus } from "./types";
 import { AssistantMessage } from "./components/AssistantMessage";
 
 const EXAMPLE_GROUPS = [
@@ -39,6 +39,7 @@ export default function App() {
   const [input, setInput] = useState("");
   const [vin, setVin] = useState("");
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<DataStatus | null>(null);
   const [dark, setDark] = useState(
     () =>
       localStorage.getItem("theme") === "dark" ||
@@ -50,6 +51,10 @@ export default function App() {
     document.documentElement.classList.toggle("dark", dark);
     localStorage.setItem("theme", dark ? "dark" : "light");
   }, [dark]);
+
+  useEffect(() => {
+    getDataStatus().then(setStatus);
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -101,6 +106,18 @@ export default function App() {
               Ask plain-English questions about RV recalls, complaints, investigations, and TSBs —
               every number is traceable to its source.
             </p>
+            {status && (
+              <p className="mt-1.5 text-xs text-slate-300">
+                NHTSA data refreshed{" "}
+                {new Date(status.refreshed_at).toLocaleDateString(undefined, {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}{" "}
+                · {status.recalls.toLocaleString()} recalls · {status.complaints.toLocaleString()} complaints ·{" "}
+                {status.makes} makes
+              </p>
+            )}
           </div>
           <button
             onClick={() => setDark((d) => !d)}

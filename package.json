@@ -16,7 +16,8 @@
     "ingest:02": "tsx --env-file=.env ingest/02_load_flat_files.ts",
     "ingest:03": "tsx --env-file=.env ingest/03_filter_rv.ts",
     "ingest:04": "tsx --env-file=.env ingest/04_classify_narratives.ts",
-    "ingest:05": "tsx --env-file=.env ingest/05_embed_narratives.ts"
+    "ingest:05": "tsx --env-file=.env ingest/05_embed_narratives.ts",
+    "ingest:stamp": "tsx --env-file=.env ingest/06_stamp_refresh.ts"
   },
   "dependencies": {
     "@types/react": "^18.3.12",

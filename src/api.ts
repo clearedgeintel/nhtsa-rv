@@ -1,8 +1,23 @@
-import type { AskResponse, ChatMessage, Grounding } from "./types";
+import type { AskResponse, ChatMessage, DataStatus, Grounding } from "./types";
 
 const FN_URL = import.meta.env.VITE_ASK_FUNCTION_URL as string;
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+
+/** Read the data-refresh status (last ingest time + counts) from app_meta via PostgREST. */
+export async function getDataStatus(): Promise<DataStatus | null> {
+  if (!SUPABASE_URL || !ANON) return null;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/app_meta?key=eq.data_status&select=value`, {
+      headers: { apikey: ANON, Authorization: `Bearer ${ANON}` },
+    });
+    if (!res.ok) return null;
+    const rows = (await res.json()) as { value: DataStatus }[];
+    return rows?.[0]?.value ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /** Classify how grounded an answer is, for the trust badge. */
 export function groundingOf(res: AskResponse): Grounding {

@@ -31,6 +31,15 @@ export type AskResponse = {
 /** How well-grounded an answer is, for the trust badge. */
 export type Grounding = "sql" | "semantic" | "none";
 
+/** Data-refresh status shown in the header (from app_meta). */
+export type DataStatus = {
+  refreshed_at: string;
+  recalls: number;
+  complaints: number;
+  investigations: number;
+  makes: number;
+};
+
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;

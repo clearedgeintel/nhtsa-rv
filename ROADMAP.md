@@ -43,7 +43,7 @@ nice-to-haves: loading skeletons, fuller ARIA/keyboard nav.
 | Item | Value | Effort | Notes |
 |---|---|---|---|
 | ✅ **VIN lookup** — `decode_vin` tool (vPIC) + UI VIN box; decodes chassis make/model/year → recalls/complaints, with the coach-not-in-VIN caveat | High | M | Shipped 2026-06-19 |
-| **Weekly auto-refresh** — Supabase cron delta ingest | High | M | Ingest is already idempotent; add scheduled job + `_discover_makes` review |
+| ✅ **Weekly auto-refresh** — GitHub Actions runs the idempotent ingest weekly + stamps `app_meta`; the page shows the last-refresh date/counts | High | M | Shipped 2026-06-19 (`.github/workflows/refresh.yml`) |
 | **Streaming responses** (SSE through the Edge Function + frontend) | High | M–L | Big perceived-latency win on multi-step loops |
 | **Auto-suggested follow-up chips** ("show chart", "filter 2023–2025") | Med | S | Agent returns 2–3 suggestions in the response |
 | **Multi-RV comparison** affordance | Med | S | Already works via the agent; add a UI entry point + example |
