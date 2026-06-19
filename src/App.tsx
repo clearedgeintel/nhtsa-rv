@@ -1,16 +1,23 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { askAgentStream, groundingOf, getDataStatus } from "./api";
 import type { ChatMessage, DataStatus } from "./types";
 import { AssistantMessage } from "./components/AssistantMessage";
 import { ReportView } from "./components/ReportView";
 import { TaxonomyBrowser } from "./components/TaxonomyBrowser";
 
+// Larger pools per category so the Shuffle button surfaces fresh prompts each time.
 const EXAMPLE_GROUPS = [
   {
     label: "Recalls",
     items: [
       "How many recalls involve Winnebago, including chassis?",
       "How many recall campaigns affect Grand Design 2024 models?",
+      "What are the most recent Thor Motor Coach recalls?",
+      "Which RV components are recalled most often?",
+      "How many Jayco recalls were issued in 2023?",
+      "Show recalls for Airstream travel trailers",
+      "Which makes had the most affected units recalled?",
+      "What chassis recalls affect Class A motorhomes?",
     ],
   },
   {
@@ -18,6 +25,12 @@ const EXAMPLE_GROUPS = [
     items: [
       "Which RV makes have the most fire-related complaints?",
       "How many critical-severity complaints does Forest River have?",
+      "What are the top complaint failure modes for Coachmen?",
+      "Which makes have the most slide-out complaints?",
+      "How many brake complaints involve Newmar?",
+      "What components drive the most severe complaints?",
+      "Which RV brands have the most electrical complaints?",
+      "How many complaints mention propane or LP gas?",
     ],
   },
   {
@@ -25,6 +38,12 @@ const EXAMPLE_GROUPS = [
     items: [
       "Show Keystone recall campaigns by model year",
       "Compare total recalls between Winnebago and Grand Design",
+      "How have RV recalls trended over the last 5 years?",
+      "Compare complaint counts for Thor vs Forest River",
+      "Show fire-related complaints by year",
+      "Which make has the worst recall-to-complaint ratio?",
+      "Compare Class A and Class C motorhome recalls",
+      "Show Jayco complaints by failure mode",
     ],
   },
   {
@@ -32,9 +51,20 @@ const EXAMPLE_GROUPS = [
     items: [
       "Complaints describing sudden brake loss going downhill",
       "Reports of water intrusion or roof leaks",
+      "Narratives about tires blowing out at highway speed",
+      "Complaints describing slide-outs that won't retract",
+      "Reports of refrigerators catching fire",
+      "Narratives about awnings failing in wind",
+      "Complaints describing steering or handling problems",
+      "Reports of carbon monoxide or gas smell inside the coach",
     ],
   },
 ];
+
+/** Pick n random items from a pool (Fisher-Yates-ish shuffle, good enough for prompts). */
+function pickRandom<T>(arr: readonly T[], n: number): T[] {
+  return [...arr].sort(() => Math.random() - 0.5).slice(0, n);
+}
 
 export default function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -44,6 +74,12 @@ export default function App() {
   const [status, setStatus] = useState<DataStatus | null>(null);
   const [report, setReport] = useState<ChatMessage | null>(null);
   const [view, setView] = useState<"ask" | "explore">("ask");
+  const [shuffle, setShuffle] = useState(0);
+  // Two random prompts per category; re-rolled whenever the shuffle counter ticks.
+  const examples = useMemo(
+    () => EXAMPLE_GROUPS.map((g) => ({ label: g.label, items: pickRandom(g.items, 2) })),
+    [shuffle],
+  );
   const [dark, setDark] = useState(
     () =>
       localStorage.getItem("theme") === "dark" ||
@@ -233,11 +269,20 @@ export default function App() {
                 </div>
               </form>
 
-              <h2 className="text-center text-lg font-semibold text-slate-700 dark:text-slate-200">
-                What would you like to know?
-              </h2>
+              <div className="flex items-center justify-center gap-3">
+                <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-200">
+                  What would you like to know?
+                </h2>
+                <button
+                  onClick={() => setShuffle((n) => n + 1)}
+                  title="Shuffle example questions"
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition hover:border-emerald-500 hover:text-emerald-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-emerald-500 dark:hover:text-emerald-400"
+                >
+                  <span aria-hidden>🔀</span> Shuffle
+                </button>
+              </div>
               <div className="mt-5 space-y-4">
-                {EXAMPLE_GROUPS.map((g) => (
+                {examples.map((g) => (
                   <div key={g.label}>
                     <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                       {g.label}
