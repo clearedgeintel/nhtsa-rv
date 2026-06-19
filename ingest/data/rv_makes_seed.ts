@@ -62,6 +62,7 @@ export const RV_MAKES_SEED: RvMakeSeed[] = [
   { make_canonical: "LANCE", make_variants: ["LANCE", "LANCE CAMPER"], category: "towable", is_motorhome_chassis: false },
   { make_canonical: "NORTHWOOD", make_variants: ["NORTHWOOD", "NORTHWOOD MANUFACTURING", "ARCTIC FOX", "NASH"], category: "towable", is_motorhome_chassis: false },
   { make_canonical: "ALLIANCE", make_variants: ["ALLIANCE", "ALLIANCE RV"], category: "towable", is_motorhome_chassis: false },
+  { make_canonical: "BRINKLEY", make_variants: ["BRINKLEY", "BRINKLEY RV"], category: "towable", is_motorhome_chassis: false },
   { make_canonical: "CROSSROADS", make_variants: ["CROSSROADS", "CROSSROADS RV"], category: "towable", is_motorhome_chassis: false },
   { make_canonical: "KZ", make_variants: ["KZ", "KZ RV", "K-Z", "K-Z INC"], category: "towable", is_motorhome_chassis: false },
   { make_canonical: "OUTDOORS RV", make_variants: ["OUTDOORS RV", "OUTDOORS RV MANUFACTURING"], category: "towable", is_motorhome_chassis: false },
