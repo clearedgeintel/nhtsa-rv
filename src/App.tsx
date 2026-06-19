@@ -201,7 +201,7 @@ export default function App() {
                   <button
                     type="submit"
                     disabled={loading || vin.trim().length < 11}
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-40"
+                    className="rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 px-4 py-2 text-sm font-bold text-white shadow-md shadow-emerald-600/25 transition hover:from-emerald-600 hover:to-emerald-800 disabled:opacity-40"
                   >
                     Look up
                   </button>
@@ -270,7 +270,7 @@ export default function App() {
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-700 disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:from-emerald-600 hover:to-emerald-800 disabled:opacity-40"
           >
             Ask
             <span aria-hidden className="text-base leading-none">→</span>
