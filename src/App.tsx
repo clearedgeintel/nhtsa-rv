@@ -75,7 +75,10 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<DataStatus | null>(null);
   const [report, setReport] = useState<ChatMessage | null>(null);
-  const [view, setView] = useState<"ask" | "explore" | "news">("ask");
+  const [view, setView] = useState<"ask" | "explore" | "news">(() => {
+    const v = new URLSearchParams(window.location.search).get("view");
+    return v === "explore" || v === "news" ? v : "ask";
+  });
   const [shuffle, setShuffle] = useState(0);
   // Two random prompts per category; re-rolled whenever the shuffle counter ticks.
   const examples = useMemo(
@@ -97,6 +100,21 @@ export default function App() {
   useEffect(() => {
     getDataStatus().then(setStatus);
   }, []);
+
+  // Keep the ?view= param in sync with the active tab. Leaving Explore strips its
+  // share params (make/year/mode/detail) so they don't leak onto Ask/News URLs.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const EXPLORE_KEYS = ["make", "myf", "myt", "rf", "rt", "mode", "detail"];
+    if (view === "ask") {
+      ["view", ...EXPLORE_KEYS].forEach((k) => p.delete(k));
+    } else {
+      p.set("view", view);
+      if (view === "news") EXPLORE_KEYS.forEach((k) => p.delete(k));
+    }
+    const qs = p.toString();
+    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+  }, [view]);
 
   // Print a report to PDF: force light mode for the print, then restore.
   useEffect(() => {

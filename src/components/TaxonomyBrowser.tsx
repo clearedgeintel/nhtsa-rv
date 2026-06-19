@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { getExploreOptions, getFailureModes, getModeBreakdown, getModeDetails } from "../api";
 import type { ComplaintDetail, ExploreFilters, ExploreOptions, FailureModeRow } from "../types";
 
@@ -11,6 +11,56 @@ const SEV = [
 ] as const;
 
 const EMPTY_FILTERS: ExploreFilters = { make: null, my_from: null, my_to: null, recv_from: null, recv_to: null };
+
+// ── CSV export ──────────────────────────────────────────────────────────────
+function downloadCsv(filename: string, headers: string[], rows: (string | number | null)[][]) {
+  const esc = (c: string | number | null) => `"${String(c ?? "").replace(/"/g, '""')}"`;
+  const csv = [headers, ...rows].map((r) => r.map(esc).join(",")).join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── URL state (share-this-view) ───────────────────────────────────────────────
+type ExploreUrlState = { filters: ExploreFilters; selected: string | null; detail: string | null };
+
+/** Read explore state from the current querystring (for share links + reloads). */
+function readUrlState(): ExploreUrlState {
+  const p = new URLSearchParams(window.location.search);
+  const num = (k: string) => (p.get(k) ? Number(p.get(k)) : null);
+  return {
+    filters: {
+      make: p.get("make"),
+      my_from: num("myf"),
+      my_to: num("myt"),
+      recv_from: num("rf"),
+      recv_to: num("rt"),
+    },
+    selected: p.get("mode"),
+    detail: p.get("detail"), // severity key, or "all", when the drill-through is open
+  };
+}
+
+/** Reflect explore state into the URL without adding history entries. */
+function writeUrlState(s: ExploreUrlState) {
+  const p = new URLSearchParams(window.location.search);
+  // Explore owns these keys; clear then re-set so stale params don't linger.
+  ["view", "make", "myf", "myt", "rf", "rt", "mode", "detail"].forEach((k) => p.delete(k));
+  p.set("view", "explore");
+  const set = (k: string, v: string | number | null) => v != null && v !== "" && p.set(k, String(v));
+  set("make", s.filters.make);
+  set("myf", s.filters.my_from);
+  set("myt", s.filters.my_to);
+  set("rf", s.filters.recv_from);
+  set("rt", s.filters.recv_to);
+  set("mode", s.selected);
+  set("detail", s.detail);
+  const qs = p.toString();
+  window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+}
 
 type Breakdown = {
   components: { component: string; n: number }[];
@@ -158,17 +208,23 @@ function Bars({ title, rows, label }: { title: string; rows: { name: string; n: 
 }
 
 export function TaxonomyBrowser() {
+  const initial = useRef<ExploreUrlState>(readUrlState());
   const [options, setOptions] = useState<ExploreOptions | null>(null);
-  const [filters, setFilters] = useState<ExploreFilters>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<ExploreFilters>(initial.current.filters);
   const [modes, setModes] = useState<FailureModeRow[]>([]);
   const [loadingModes, setLoadingModes] = useState(true);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(initial.current.selected);
   const [breakdown, setBreakdown] = useState<Breakdown>({ components: [], makes: [] });
   const [loadingDetail, setLoadingDetail] = useState(false);
   // "What's behind this number" drill-through: a clicked heatmap cell (mode + optional severity).
-  const [cell, setCell] = useState<{ mode: string; severity: string | null } | null>(null);
+  const [cell, setCell] = useState<{ mode: string; severity: string | null } | null>(
+    initial.current.selected && initial.current.detail
+      ? { mode: initial.current.selected, severity: initial.current.detail === "all" ? null : initial.current.detail }
+      : null,
+  );
   const [details, setDetails] = useState<ComplaintDetail[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const firstFilterRun = useRef(true); // don't wipe a URL-restored drill-through on mount
 
   useEffect(() => {
     getExploreOptions().then(setOptions);
@@ -177,7 +233,8 @@ export function TaxonomyBrowser() {
   // Re-fetch the heatmap whenever the slicers change.
   useEffect(() => {
     setLoadingModes(true);
-    setCell(null); // collapse any open drill-through; its rows may no longer match
+    if (firstFilterRun.current) firstFilterRun.current = false;
+    else setCell(null); // changing a slicer collapses the drill-through (its rows may no longer match)
     getFailureModes(filters).then((m) => {
       setModes(m);
       setLoadingModes(false);
@@ -185,6 +242,11 @@ export function TaxonomyBrowser() {
       setSelected((prev) => (prev && m.some((r) => r.failure_mode === prev) ? prev : m[0]?.failure_mode ?? null));
     });
   }, [filters]);
+
+  // Keep the URL in sync so the view is shareable / reload-safe.
+  useEffect(() => {
+    writeUrlState({ filters, selected, detail: cell ? cell.severity ?? "all" : null });
+  }, [filters, selected, cell]);
 
   // Fetch the underlying complaint records when a number is clicked.
   useEffect(() => {
@@ -224,6 +286,55 @@ export function TaxonomyBrowser() {
     return m;
   }, [modes]);
 
+  const [shared, setShared] = useState(false);
+  const slug = (filterSummary(filters) || "all").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+
+  function exportHeatmapCsv() {
+    downloadCsv(
+      `rv-taxonomy-${slug}.csv`,
+      ["failure_mode", "minor", "moderate", "severe", "critical", "total", "makes"],
+      modes.map((r) => [r.failure_mode, r.minor, r.moderate, r.severe, r.critical, r.complaints, r.makes]),
+    );
+  }
+  function exportDetailsCsv() {
+    if (!cell) return;
+    downloadCsv(
+      `rv-complaints-${cell.mode}-${cell.severity ?? "all"}-${slug}.csv`.replace(/[^a-z0-9.\-_]+/gi, "-"),
+      ["odi_id", "make", "model", "model_year", "component", "severity", "date_received", "narrative"],
+      details.map((d) => [d.odi_id, d.make_canonical, d.model, d.model_year, d.component, d.severity, d.date_received, d.narrative]),
+    );
+  }
+  function copyShareLink() {
+    navigator.clipboard?.writeText(window.location.href).then(
+      () => {
+        setShared(true);
+        setTimeout(() => setShared(false), 1800);
+      },
+      () => {},
+    );
+  }
+
+  // Roving-tabindex keyboard nav across the heatmap grid: col 0 = mode name,
+  // cols 1–4 = severities, col 5 = total. Arrow keys move; Enter/Space activates.
+  const GRID_COLS = 6;
+  const [focusPos, setFocusPos] = useState<[number, number]>([0, 0]);
+  function moveFocus(e: KeyboardEvent, ri: number, ci: number) {
+    let [r, c] = [ri, ci];
+    switch (e.key) {
+      case "ArrowRight": c = Math.min(GRID_COLS - 1, c + 1); break;
+      case "ArrowLeft": c = Math.max(0, c - 1); break;
+      case "ArrowDown": r = Math.min(modes.length - 1, r + 1); break;
+      case "ArrowUp": r = Math.max(0, r - 1); break;
+      case "Home": c = 0; break;
+      case "End": c = GRID_COLS - 1; break;
+      default: return;
+    }
+    e.preventDefault();
+    setFocusPos([r, c]);
+    document.getElementById(`htm-${r}-${c}`)?.focus();
+  }
+  const tab = (ri: number, ci: number) => (focusPos[0] === ri && focusPos[1] === ci ? 0 : -1);
+
   return (
     <div>
       <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Defect taxonomy</h2>
@@ -234,17 +345,40 @@ export function TaxonomyBrowser() {
 
       <FilterBar options={options} filters={filters} setFilters={setFilters} />
 
+      {/* View actions */}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          onClick={exportHeatmapCsv}
+          disabled={modes.length === 0}
+          className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition hover:border-emerald-500 hover:text-emerald-700 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-emerald-500"
+        >
+          ⤓ Export CSV
+        </button>
+        <button
+          onClick={copyShareLink}
+          className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition hover:border-emerald-500 hover:text-emerald-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-emerald-500"
+        >
+          {shared ? "✓ Link copied" : "🔗 Share this view"}
+        </button>
+        <span className="text-[11px] text-slate-400">
+          {modes.length.toLocaleString()} failure modes{filterSummary(filters) ? ` · ${filterSummary(filters)}` : ""}
+        </span>
+      </div>
+
       {/* Heatmap */}
       <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" role="grid">
+          <caption className="sr-only">
+            RV complaint failure modes by severity. Use arrow keys to move between cells, Enter or Space to drill in.
+          </caption>
           <thead>
             <tr className="border-b border-slate-200 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
-              <th className="px-3 py-2 text-left font-semibold">Failure mode</th>
+              <th scope="col" className="px-3 py-2 text-left font-semibold">Failure mode</th>
               {SEV.map((s) => (
-                <th key={s.key} className="px-2 py-2 text-center font-semibold">{s.label}</th>
+                <th scope="col" key={s.key} className="px-2 py-2 text-center font-semibold">{s.label}</th>
               ))}
-              <th className="px-3 py-2 text-right font-semibold">Total</th>
-              <th className="px-3 py-2 text-right font-semibold">Makes</th>
+              <th scope="col" className="px-3 py-2 text-right font-semibold">Total</th>
+              <th scope="col" className="px-3 py-2 text-right font-semibold">Makes</th>
             </tr>
           </thead>
           <tbody>
@@ -259,27 +393,48 @@ export function TaxonomyBrowser() {
                 </td>
               </tr>
             ) : (
-              modes.map((r) => {
+              modes.map((r, ri) => {
                 const sel = r.failure_mode === selected;
+                const selectMode = () => {
+                  setSelected(r.failure_mode);
+                  setCell(null);
+                };
                 return (
                   <tr
                     key={r.failure_mode}
-                    onClick={() => {
-                      setSelected(r.failure_mode);
-                      setCell(null);
-                    }}
+                    onClick={selectMode}
                     className={
                       "cursor-pointer border-b border-slate-100 last:border-0 dark:border-slate-700/60 " +
                       (sel ? "bg-emerald-50 dark:bg-emerald-900/20" : "hover:bg-slate-50 dark:hover:bg-slate-700/40")
                     }
                   >
-                    <td className="px-3 py-1.5 font-medium text-slate-700 dark:text-slate-200">{r.failure_mode}</td>
-                    {SEV.map((s) => {
+                    <td className="px-3 py-1.5">
+                      <span
+                        id={`htm-${ri}-0`}
+                        role="button"
+                        tabIndex={tab(ri, 0)}
+                        aria-label={`${r.failure_mode}: ${r.complaints.toLocaleString()} complaints. Show its top components and makes.`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          selectMode();
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            selectMode();
+                          } else moveFocus(e, ri, 0);
+                        }}
+                        className="inline-block cursor-pointer rounded font-medium text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-slate-200"
+                      >
+                        {r.failure_mode}
+                      </span>
+                    </td>
+                    {SEV.map((s, si) => {
+                      const ci = si + 1;
                       const v = r[s.key as keyof FailureModeRow] as number;
                       const a = v === 0 ? 0 : 0.15 + 0.85 * (v / colMax[s.key]);
                       const active = cell?.mode === r.failure_mode && cell?.severity === s.key;
-                      const openCell = (e: MouseEvent) => {
-                        e.stopPropagation();
+                      const open = () => {
                         if (v === 0) return;
                         setSelected(r.failure_mode);
                         setCell({ mode: r.failure_mode, severity: s.key });
@@ -287,10 +442,23 @@ export function TaxonomyBrowser() {
                       return (
                         <td key={s.key} className="px-1 py-1 text-center">
                           <div
-                            onClick={openCell}
-                            title={v > 0 ? `Show ${s.label.toLowerCase()} ${r.failure_mode} complaints` : undefined}
+                            id={`htm-${ri}-${ci}`}
+                            role="button"
+                            tabIndex={tab(ri, ci)}
+                            aria-pressed={active}
+                            aria-label={`${v.toLocaleString()} ${s.label.toLowerCase()}-severity ${r.failure_mode} complaints${v > 0 ? ", show them" : ""}`}
+                            onClick={(e) => {
+                              (e as MouseEvent).stopPropagation();
+                              open();
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                open();
+                              } else moveFocus(e, ri, ci);
+                            }}
                             className={
-                              "rounded py-1 text-xs tabular-nums transition " +
+                              "rounded py-1 text-xs tabular-nums outline-none transition focus-visible:ring-2 focus-visible:ring-emerald-600 " +
                               (v > 0 ? "cursor-pointer hover:ring-2 hover:ring-slate-900/30 dark:hover:ring-white/40 " : "") +
                               (active ? "ring-2 ring-slate-900 dark:ring-white " : "")
                             }
@@ -306,14 +474,18 @@ export function TaxonomyBrowser() {
                     })}
                     <td className="px-2 py-1.5 text-right">
                       <button
+                        id={`htm-${ri}-5`}
+                        tabIndex={tab(ri, 5)}
+                        aria-pressed={cell?.mode === r.failure_mode && cell?.severity === null}
+                        aria-label={`All ${r.failure_mode} complaints: ${r.complaints.toLocaleString()}. Show them.`}
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelected(r.failure_mode);
                           setCell({ mode: r.failure_mode, severity: null });
                         }}
-                        title={`Show ${r.failure_mode} complaints`}
+                        onKeyDown={(e) => moveFocus(e, ri, 5)}
                         className={
-                          "rounded px-1.5 py-0.5 font-mono text-slate-700 transition hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-600 " +
+                          "rounded px-1.5 py-0.5 font-mono text-slate-700 outline-none transition hover:bg-slate-200 focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-slate-200 dark:hover:bg-slate-600 " +
                           (cell?.mode === r.failure_mode && cell?.severity === null ? "bg-slate-200 ring-1 ring-slate-400 dark:bg-slate-600" : "")
                         }
                       >
@@ -361,12 +533,22 @@ export function TaxonomyBrowser() {
                 {filterSummary(filters) ? ` · ${filterSummary(filters)}` : ""}
               </span>
             </div>
-            <button
-              onClick={() => setCell(null)}
-              className="shrink-0 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-            >
-              ✕ Close
-            </button>
+            <div className="flex shrink-0 items-center gap-3">
+              {details.length > 0 && (
+                <button
+                  onClick={exportDetailsCsv}
+                  className="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                >
+                  ⤓ Export CSV
+                </button>
+              )}
+              <button
+                onClick={() => setCell(null)}
+                className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                ✕ Close
+              </button>
+            </div>
           </div>
 
           {loadingDetails ? (
