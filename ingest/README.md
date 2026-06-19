@@ -56,8 +56,8 @@ npm run ingest:04 -- --commit --limit 200       # classify a sample
 - The flat files are **tab-delimited** (CLAUDE.md §5 says "pipe" — the real files use tabs;
   handled correctly here).
 - `recalls.campaign_id` is the PK, so the per-(campaign,make,model,year) rows in the source
-  collapse to **one row per campaign** (matches "a recall = one campaign", §6). The
-  representative `model`/`model_year` is the first row seen — campaign-level fields
-  (summary/consequence/remedy) are identical across rows. If model-year-precise recall
-  filtering is needed, add a `recall_vehicles` child table (proposed follow-up).
+  collapse to **one row per campaign** (matches "a recall = one campaign", §6); its
+  `model`/`model_year` are representative-only. The **`recall_vehicles`** child table
+  (migration 0004) preserves the campaign × make × model × year grain — query it with
+  `COUNT(DISTINCT campaign_id)` for model-year-precise recall counts. 03 populates both.
 - `_smoketest.ts` validates parsing/matching offline (no keys): `npx tsx ingest/_smoketest.ts`.

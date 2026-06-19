@@ -99,6 +99,76 @@ async function loadDataset(
   }
 }
 
+/**
+ * Recalls need two tables: campaign-level `recalls` (one row per campaign_id) and the
+ * `recall_vehicles` child (one row per campaign×make×model×year, for model-year-precise
+ * queries). Accumulate fully, then upsert recalls (FK parent) before recall_vehicles.
+ * RCL fields: 2 CAMPNO,3 MAKETXT,4 MODELTXT,5 YEARTXT,7 COMPNAME,12 POTAFF,16 RCDATE,20 DESC,21 CONSEQ,22 CORRECTIVE
+ */
+async function loadRecalls(matcher: MakeMatcher) {
+  const file = await resolveDataFile(DATA_DIR, "recalls");
+  if (!file) {
+    console.warn(`[recalls] no staged file — run 02_load_flat_files; skipping`);
+    return;
+  }
+  console.log(`[recalls] reading ${file}`);
+
+  const campaigns = new Map<string, Record<string, unknown>>(); // campaign_id → row (first wins)
+  const vehicles = new Map<string, Record<string, unknown>>(); // rv_id → row
+  const unmatched = new Map<string, number>();
+  let matched = 0;
+
+  const total = await streamRecords(file, (f) => {
+    const entry = matcher.match(f[2]);
+    if (!entry) {
+      const raw = (f[2] ?? "").trim().toUpperCase();
+      if (raw) unmatched.set(raw, (unmatched.get(raw) ?? 0) + 1);
+      return;
+    }
+    matched++;
+    const model = clean(f[3]);
+    if (!rvQualifies(entry, model)) return;
+    const campaign_id = clean(f[1]);
+    if (!campaign_id) return;
+    const model_year = parseYear(f[4]);
+
+    if (!campaigns.has(campaign_id)) {
+      campaigns.set(campaign_id, {
+        campaign_id,
+        make_canonical: entry.canonical,
+        model,
+        model_year,
+        component: clean(f[6]),
+        recall_date: parseDate(f[15]),
+        affected_units: parseInt0(f[11]),
+        summary: clean(f[19]),
+        consequence: clean(f[20]),
+        remedy: clean(f[21]),
+        is_chassis: entry.isChassis,
+      });
+    }
+    const rv_id = `${campaign_id}|${entry.canonical}|${model ?? ""}|${model_year ?? ""}`;
+    if (!vehicles.has(rv_id)) {
+      vehicles.set(rv_id, {
+        rv_id, campaign_id, make_canonical: entry.canonical, model, model_year,
+        is_chassis: entry.isChassis,
+      });
+    }
+  });
+
+  await upsertBatched("recalls", [...campaigns.values()], "campaign_id", 500);
+  await upsertBatched("recall_vehicles", [...vehicles.values()], "rv_id", 500);
+
+  console.log(
+    `[recalls] scanned ${total} → ${matched} RV-make matches → ${campaigns.size} campaigns, ${vehicles.size} vehicle rows`,
+  );
+  const top = [...unmatched.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
+  if (top.length) {
+    console.log(`[recalls] top unmatched makes (refine rv_makes_seed if any are RV):`);
+    for (const [mk, c] of top) console.log(`    ${String(c).padStart(7)}  ${mk}`);
+  }
+}
+
 // ---- Field index maps (0-based; see flat-file layouts) ----
 
 async function main() {
@@ -108,28 +178,7 @@ async function main() {
 
   for (const key of keys) {
     if (key === "recalls") {
-      // RCL fields: 2 CAMPNO,3 MAKETXT,4 MODELTXT,5 YEARTXT,7 COMPNAME,12 POTAFF,16 RCDATE,20 DESC,21 CONSEQ,22 CORRECTIVE
-      await loadDataset(
-        "recalls", matcher, "recalls", "campaign_id",
-        (f, m) => {
-          const campaign_id = clean(f[1]);
-          if (!campaign_id) return null;
-          return {
-            campaign_id,
-            make_canonical: m.canonical,
-            model: clean(f[3]),
-            model_year: parseYear(f[4]),
-            component: clean(f[6]),
-            recall_date: parseDate(f[15]),
-            affected_units: parseInt0(f[11]),
-            summary: clean(f[19]),
-            consequence: clean(f[20]),
-            remedy: clean(f[21]),
-            is_chassis: m.isChassis,
-          };
-        },
-        2, 3,
-      );
+      await loadRecalls(matcher);
     } else if (key === "complaints") {
       // CMPL fields: 2 ODINO,4 MAKETXT,5 MODELTXT,6 YEARTXT,12 COMPDESC,17 LDATE,20 CDESCR
       await loadDataset(

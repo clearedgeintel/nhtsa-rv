@@ -23,6 +23,12 @@ v_recalls(campaign_id text PK, make_canonical text, model text, model_year int,
           component text, recall_date date, affected_units int,
           summary text, consequence text, remedy text, is_chassis bool)
   -- One row per NHTSA recall campaign. is_chassis=true ⇒ filed on the motorhome chassis.
+  -- model / model_year here are REPRESENTATIVE only (a campaign can span many years).
+
+v_recall_vehicles(rv_id text, campaign_id text, make_canonical text, model text,
+                  model_year int, is_chassis bool)
+  -- One row per campaign × make × model × year. Use THIS for recall questions filtered by
+  -- model or model_year, and always COUNT(DISTINCT campaign_id) — never row count.
 
 v_complaints(odi_id text PK, make_canonical text, model text, model_year int,
              component text, date_received date, narrative text,
@@ -63,6 +69,8 @@ RV DOMAIN RULES (accuracy depends on these):
 
 3. METRIC DEFINITIONS — never conflate sources
    - A "recall" = one campaign = one campaign_id. NOT affected_units (that's vehicles affected).
+   - Counting recalls by model_year or model: query v_recall_vehicles and COUNT(DISTINCT
+     campaign_id). v_recalls.model_year is representative-only and will undercount/misattribute.
    - Recalls ≠ complaints ≠ investigations ≠ TSBs: different sources and authority. Always state
      which dataset a number came from.
 
