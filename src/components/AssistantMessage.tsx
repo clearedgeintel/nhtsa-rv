@@ -12,7 +12,7 @@ const BADGE: Record<Grounding, { dot: string; label: string; cls: string }> = {
   none: { dot: "bg-slate-400", label: "No data sources", cls: "text-slate-600 dark:text-slate-400" },
 };
 
-export function AssistantMessage({ m }: { m: ChatMessage }) {
+export function AssistantMessage({ m, onExport }: { m: ChatMessage; onExport?: (m: ChatMessage) => void }) {
   const [copied, setCopied] = useState(false);
   const [rating, setRating] = useState<"up" | "down" | null>(null);
   // Rotating RV-themed "thinking" message while the answer streams.
@@ -69,6 +69,15 @@ export function AssistantMessage({ m }: { m: ChatMessage }) {
             >
               {copied ? "Copied" : "Copy"}
             </button>
+            {onExport && (
+              <button
+                onClick={() => onExport(m)}
+                className="rounded px-1.5 py-0.5 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                title="Export as a PDF report"
+              >
+                Report
+              </button>
+            )}
             <button
               onClick={() => rate("up")}
               className={"rounded px-1 py-0.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 " + (rating === "up" ? "opacity-100" : "opacity-50 hover:opacity-100")}

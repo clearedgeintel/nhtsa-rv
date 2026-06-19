@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { askAgentStream, groundingOf, getDataStatus } from "./api";
 import type { ChatMessage, DataStatus } from "./types";
 import { AssistantMessage } from "./components/AssistantMessage";
+import { ReportView } from "./components/ReportView";
 
 const EXAMPLE_GROUPS = [
   {
@@ -40,6 +41,7 @@ export default function App() {
   const [vin, setVin] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<DataStatus | null>(null);
+  const [report, setReport] = useState<ChatMessage | null>(null);
   const [dark, setDark] = useState(
     () =>
       localStorage.getItem("theme") === "dark" ||
@@ -55,6 +57,23 @@ export default function App() {
   useEffect(() => {
     getDataStatus().then(setStatus);
   }, []);
+
+  // Print a report to PDF: force light mode for the print, then restore.
+  useEffect(() => {
+    if (!report) return;
+    const wasDark = document.documentElement.classList.contains("dark");
+    if (wasDark) document.documentElement.classList.remove("dark");
+    const restore = () => {
+      if (wasDark) document.documentElement.classList.add("dark");
+      setReport(null);
+    };
+    const t = setTimeout(() => window.print(), 350); // let charts paint first
+    window.addEventListener("afterprint", restore, { once: true });
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("afterprint", restore);
+    };
+  }, [report]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -109,7 +128,8 @@ export default function App() {
   const empty = messages.length === 0;
 
   return (
-    <div className="flex h-screen flex-col bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
+    <>
+    <div className="flex h-screen flex-col bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-100 print:hidden">
       {/* Hero header */}
       <header className="relative shrink-0 overflow-hidden">
         <img src="/rv.png" alt="" className="absolute inset-0 h-full w-full object-cover object-right" />
@@ -221,7 +241,7 @@ export default function App() {
                       {m.content}
                     </div>
                   ) : (
-                    <AssistantMessage m={m} />
+                    <AssistantMessage m={m} onExport={setReport} />
                   )}
                 </li>
               ))}
@@ -258,5 +278,7 @@ export default function App() {
         </form>
       </footer>
     </div>
+    {report && <ReportView message={report} />}
+    </>
   );
 }

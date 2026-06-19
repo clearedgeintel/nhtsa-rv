@@ -55,7 +55,8 @@ nice-to-haves: loading skeletons, fuller ARIA/keyboard nav.
 - **Saved searches / watchlists + email alerts** ("new Winnebago Class A recalls 2020–2024")
   via Supabase cron + an Edge Function mailer.
 - **Persistent sidebar dashboard** — top defect components, recall trend sparkline, top makes.
-- **Report export** — formatted Markdown → PDF for owners/dealers.
+- ✅ **Report export** — "Report" button on any answer → branded, print-optimized PDF
+  (Markdown + charts + NHTSA-linked sources) via the browser; no new deps. Shipped 2026-06-19.
 
 ---
 
