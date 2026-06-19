@@ -47,11 +47,11 @@ export function Provenance({ sqlUsed, sources, narrativeHits, defaultOpen = fals
       <div className="flex items-center justify-between gap-2">
         <button
           onClick={() => setOpen((o) => !o)}
-          className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+          className="flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-100"
         >
           <span className={"transition-transform " + (open ? "rotate-90" : "")}>▶</span>
           How I got this
-          <span className="text-slate-400 dark:text-slate-500">
+          <span className="text-slate-500 dark:text-slate-400">
             ({sqlUsed?.length ?? 0} queries · {sources?.length ?? 0} sources ·{" "}
             {narrativeHits?.length ?? 0} narratives)
           </span>
@@ -112,7 +112,7 @@ export function Provenance({ sqlUsed, sources, narrativeHits, defaultOpen = fals
               <div className="space-y-2">
                 {narrativeHits.map((h) => (
                   <div key={h.odi_id} className="rounded border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-800">
-                    <div className="mb-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                    <div className="mb-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400">
                       <span className="font-mono">ODI {h.odi_id}</span>
                       <span>
                         {h.make_canonical} {h.model_year ?? ""} {h.model ?? ""}

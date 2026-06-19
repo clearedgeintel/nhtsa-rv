@@ -17,7 +17,8 @@ export function Chart({ spec }: { spec: ChartSpec }) {
     return out;
   });
 
-  const axisProps = { tick: { fontSize: 11, fill: "#94a3b8" }, stroke: "#94a3b8" } as const;
+  // slate-500 tick labels read well on both light and dark cards; slate-400 axis line.
+  const axisProps = { tick: { fontSize: 11, fill: "#64748b" }, stroke: "#94a3b8" } as const;
 
   return (
     <figure className="my-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">

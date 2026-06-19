@@ -8,7 +8,7 @@ import { Provenance } from "./Provenance";
 const BADGE: Record<Grounding, { dot: string; label: string; cls: string }> = {
   sql: { dot: "bg-emerald-500", label: "Grounded in data", cls: "text-emerald-700 dark:text-emerald-400" },
   semantic: { dot: "bg-amber-500", label: "Semantic match", cls: "text-amber-700 dark:text-amber-400" },
-  none: { dot: "bg-slate-400", label: "No data sources", cls: "text-slate-500 dark:text-slate-400" },
+  none: { dot: "bg-slate-400", label: "No data sources", cls: "text-slate-600 dark:text-slate-400" },
 };
 
 export function AssistantMessage({ m }: { m: ChatMessage }) {
@@ -47,7 +47,7 @@ export function AssistantMessage({ m }: { m: ChatMessage }) {
         <div className="flex items-center gap-1">
           <button
             onClick={copy}
-            className="rounded px-1.5 py-0.5 text-[11px] text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            className="rounded px-1.5 py-0.5 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
             title="Copy answer"
           >
             {copied ? "Copied" : "Copy"}

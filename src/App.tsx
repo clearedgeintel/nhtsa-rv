@@ -123,7 +123,7 @@ export default function App() {
               <div className="mt-5 space-y-4">
                 {EXAMPLE_GROUPS.map((g) => (
                   <div key={g.label}>
-                    <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                    <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                       {g.label}
                     </div>
                     <div className="grid gap-2 sm:grid-cols-2">
@@ -156,7 +156,7 @@ export default function App() {
               ))}
               {loading && (
                 <li className="flex justify-start">
-                  <div className="flex items-center gap-2 rounded-2xl rounded-bl-sm bg-white px-4 py-3 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700">
+                  <div className="flex items-center gap-2 rounded-2xl rounded-bl-sm bg-white px-4 py-3 text-sm text-slate-600 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">
                     <span className="inline-flex gap-1">
                       <span className="h-2 w-2 animate-bounce rounded-full bg-emerald-500 [animation-delay:-0.3s]" />
                       <span className="h-2 w-2 animate-bounce rounded-full bg-emerald-500 [animation-delay:-0.15s]" />
