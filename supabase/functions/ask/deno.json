@@ -1,0 +1,6 @@
+{
+  "imports": {
+    "@anthropic-ai/sdk": "npm:@anthropic-ai/sdk@0.105.0",
+    "postgres": "npm:postgres@3.4.5"
+  }
+}
