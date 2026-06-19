@@ -52,6 +52,18 @@ export type ExploreFilters = {
   recv_to: number | null;
 };
 
+/** A single complaint record behind a heatmap count (Explore drill-through). */
+export type ComplaintDetail = {
+  odi_id: string;
+  make_canonical: string;
+  model: string | null;
+  model_year: number | null;
+  component: string | null;
+  severity: string | null;
+  date_received: string | null;
+  narrative: string;
+};
+
 /** Option sources for the Explore slicers (from v_explore_makes / v_explore_bounds). */
 export type ExploreOptions = {
   makes: string[];

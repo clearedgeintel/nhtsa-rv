@@ -1,6 +1,7 @@
 import type {
   AskResponse,
   ChatMessage,
+  ComplaintDetail,
   DataStatus,
   ExploreFilters,
   ExploreOptions,
@@ -136,6 +137,21 @@ export async function getModeBreakdown(
     callRpc<{ make_canonical: string; n: number }>("rpc_failure_mode_make", args),
   ]);
   return { components, makes };
+}
+
+/** Explore: the actual complaint records behind a heatmap count (drill-through). */
+export async function getModeDetails(
+  mode: string,
+  severity: string | null,
+  filters?: ExploreFilters,
+  limit = 25,
+): Promise<ComplaintDetail[]> {
+  return callRpc<ComplaintDetail>("rpc_failure_mode_details", {
+    p_mode: mode,
+    p_severity: severity ?? null,
+    ...rpcFilterArgs(filters),
+    p_limit: limit,
+  });
 }
 
 /** Explore: option sources for the slicers (brand list + model-year / received-year bounds). */

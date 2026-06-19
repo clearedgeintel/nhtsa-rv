@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { getExploreOptions, getFailureModes, getModeBreakdown } from "../api";
-import type { ExploreFilters, ExploreOptions, FailureModeRow } from "../types";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { getExploreOptions, getFailureModes, getModeBreakdown, getModeDetails } from "../api";
+import type { ComplaintDetail, ExploreFilters, ExploreOptions, FailureModeRow } from "../types";
 
 // Severity columns with a safety-coded color (intensity scales with frequency).
 const SEV = [
@@ -165,6 +165,10 @@ export function TaxonomyBrowser() {
   const [selected, setSelected] = useState<string | null>(null);
   const [breakdown, setBreakdown] = useState<Breakdown>({ components: [], makes: [] });
   const [loadingDetail, setLoadingDetail] = useState(false);
+  // "What's behind this number" drill-through: a clicked heatmap cell (mode + optional severity).
+  const [cell, setCell] = useState<{ mode: string; severity: string | null } | null>(null);
+  const [details, setDetails] = useState<ComplaintDetail[]>([]);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   useEffect(() => {
     getExploreOptions().then(setOptions);
@@ -173,6 +177,7 @@ export function TaxonomyBrowser() {
   // Re-fetch the heatmap whenever the slicers change.
   useEffect(() => {
     setLoadingModes(true);
+    setCell(null); // collapse any open drill-through; its rows may no longer match
     getFailureModes(filters).then((m) => {
       setModes(m);
       setLoadingModes(false);
@@ -180,6 +185,24 @@ export function TaxonomyBrowser() {
       setSelected((prev) => (prev && m.some((r) => r.failure_mode === prev) ? prev : m[0]?.failure_mode ?? null));
     });
   }, [filters]);
+
+  // Fetch the underlying complaint records when a number is clicked.
+  useEffect(() => {
+    if (!cell) {
+      setDetails([]);
+      return;
+    }
+    let alive = true;
+    setLoadingDetails(true);
+    getModeDetails(cell.mode, cell.severity, filters, 25).then((d) => {
+      if (!alive) return;
+      setDetails(d);
+      setLoadingDetails(false);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [cell, filters]);
 
   // Drill-down honors the same slicers.
   useEffect(() => {
@@ -205,7 +228,8 @@ export function TaxonomyBrowser() {
     <div>
       <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Defect taxonomy</h2>
       <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
-        Complaint failure modes by severity. Slice by brand and year, then click a row for its top components and makes.
+        Complaint failure modes by severity. Slice by brand and year, click a row for its top components and
+        makes, or click any number to see the complaints behind it.
       </p>
 
       <FilterBar options={options} filters={filters} setFilters={setFilters} />
@@ -240,7 +264,10 @@ export function TaxonomyBrowser() {
                 return (
                   <tr
                     key={r.failure_mode}
-                    onClick={() => setSelected(r.failure_mode)}
+                    onClick={() => {
+                      setSelected(r.failure_mode);
+                      setCell(null);
+                    }}
                     className={
                       "cursor-pointer border-b border-slate-100 last:border-0 dark:border-slate-700/60 " +
                       (sel ? "bg-emerald-50 dark:bg-emerald-900/20" : "hover:bg-slate-50 dark:hover:bg-slate-700/40")
@@ -250,10 +277,23 @@ export function TaxonomyBrowser() {
                     {SEV.map((s) => {
                       const v = r[s.key as keyof FailureModeRow] as number;
                       const a = v === 0 ? 0 : 0.15 + 0.85 * (v / colMax[s.key]);
+                      const active = cell?.mode === r.failure_mode && cell?.severity === s.key;
+                      const openCell = (e: MouseEvent) => {
+                        e.stopPropagation();
+                        if (v === 0) return;
+                        setSelected(r.failure_mode);
+                        setCell({ mode: r.failure_mode, severity: s.key });
+                      };
                       return (
                         <td key={s.key} className="px-1 py-1 text-center">
                           <div
-                            className="rounded py-1 text-xs tabular-nums"
+                            onClick={openCell}
+                            title={v > 0 ? `Show ${s.label.toLowerCase()} ${r.failure_mode} complaints` : undefined}
+                            className={
+                              "rounded py-1 text-xs tabular-nums transition " +
+                              (v > 0 ? "cursor-pointer hover:ring-2 hover:ring-slate-900/30 dark:hover:ring-white/40 " : "") +
+                              (active ? "ring-2 ring-slate-900 dark:ring-white " : "")
+                            }
                             style={{
                               backgroundColor: `rgba(${s.rgb},${a})`,
                               color: a > 0.55 ? "white" : "rgb(51,65,85)",
@@ -264,7 +304,22 @@ export function TaxonomyBrowser() {
                         </td>
                       );
                     })}
-                    <td className="px-3 py-1.5 text-right font-mono text-slate-700 dark:text-slate-200">{r.complaints.toLocaleString()}</td>
+                    <td className="px-2 py-1.5 text-right">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelected(r.failure_mode);
+                          setCell({ mode: r.failure_mode, severity: null });
+                        }}
+                        title={`Show ${r.failure_mode} complaints`}
+                        className={
+                          "rounded px-1.5 py-0.5 font-mono text-slate-700 transition hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-600 " +
+                          (cell?.mode === r.failure_mode && cell?.severity === null ? "bg-slate-200 ring-1 ring-slate-400 dark:bg-slate-600" : "")
+                        }
+                      >
+                        {r.complaints.toLocaleString()}
+                      </button>
+                    </td>
                     <td className="px-3 py-1.5 text-right font-mono text-slate-500 dark:text-slate-400">{r.makes}</td>
                   </tr>
                 );
@@ -293,6 +348,72 @@ export function TaxonomyBrowser() {
           )}
         </div>
       )}
+
+      {/* Drill-through: the actual complaint records behind a clicked number */}
+      {cell && (
+        <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className="mb-3 flex items-start justify-between gap-2">
+            <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+              Complaints behind this number{" "}
+              <span className="ml-1 font-normal text-slate-500 dark:text-slate-400">
+                {cell.mode}
+                {cell.severity ? ` · ${cell.severity}` : " · all severities"}
+                {filterSummary(filters) ? ` · ${filterSummary(filters)}` : ""}
+              </span>
+            </div>
+            <button
+              onClick={() => setCell(null)}
+              className="shrink-0 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              ✕ Close
+            </button>
+          </div>
+
+          {loadingDetails ? (
+            <p className="text-sm text-slate-400">Loading…</p>
+          ) : details.length === 0 ? (
+            <p className="text-sm text-slate-400">No complaint records found.</p>
+          ) : (
+            <>
+              <ul className="space-y-2">
+                {details.map((d) => (
+                  <li key={d.odi_id} className="rounded-lg border border-slate-200 bg-slate-50/60 p-2.5 dark:border-slate-700 dark:bg-slate-800/60">
+                    <div className="mb-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                      <span className="rounded bg-slate-200 px-1.5 py-0.5 font-mono text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                        ODI {d.odi_id}
+                      </span>
+                      <span className="font-medium text-slate-700 dark:text-slate-200">
+                        {d.make_canonical} {d.model_year ?? ""} {d.model ?? ""}
+                      </span>
+                      {d.component && <span className="rounded bg-slate-100 px-1 dark:bg-slate-700">{d.component}</span>}
+                      {d.severity && (
+                        <span className="rounded bg-amber-100 px-1 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">{d.severity}</span>
+                      )}
+                      {d.date_received && <span className="ml-auto">{d.date_received}</span>}
+                    </div>
+                    <p className="line-clamp-3 text-[12px] leading-snug text-slate-700 dark:text-slate-300" title={d.narrative}>
+                      {d.narrative}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[11px] text-slate-400">
+                Showing {details.length} most recent{details.length >= 25 ? " (max 25)" : ""}. Source: NHTSA complaint
+                database — verify any ODI number at nhtsa.gov.
+              </p>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
+}
+
+/** Compact one-line summary of the active slicers for the drill-through header. */
+function filterSummary(f: ExploreFilters): string {
+  const parts: string[] = [];
+  if (f.make) parts.push(f.make);
+  if (f.my_from || f.my_to) parts.push(`MY ${f.my_from ?? "…"}–${f.my_to ?? "…"}`);
+  if (f.recv_from || f.recv_to) parts.push(`reported ${f.recv_from ?? "…"}–${f.recv_to ?? "…"}`);
+  return parts.join(" · ");
 }
