@@ -19,6 +19,9 @@ vite.config.d.ts
 supabase/.branches/
 supabase/.temp/
 
+# Ingestion staging (downloaded NHTSA flat files)
+ingest/.data/
+
 # Editor / OS
 .vscode/*
 !.vscode/extensions.json
