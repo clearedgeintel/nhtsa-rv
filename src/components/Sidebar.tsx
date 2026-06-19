@@ -128,6 +128,10 @@ export function Sidebar({ onAsk, onSeeNews }: { onAsk: (q: string) => void; onSe
   return (
     <aside className="hidden w-64 shrink-0 overflow-y-auto border-r border-slate-200 bg-white px-4 py-5 dark:border-slate-700 dark:bg-slate-800 lg:block">
       <div className="space-y-5">
+        <div className="border-b border-slate-100 pb-4 dark:border-slate-700/60">
+          <NewsCard onSeeAll={onSeeNews} />
+        </div>
+
         {/* Focus banner */}
         {focus && (
           <div className="flex items-center justify-between gap-2 rounded-lg bg-emerald-50 px-2.5 py-1.5 ring-1 ring-emerald-200 dark:bg-emerald-900/25 dark:ring-emerald-800">
@@ -192,11 +196,7 @@ export function Sidebar({ onAsk, onSeeNews }: { onAsk: (q: string) => void; onSe
           />
         </Section>
 
-        <div className="border-t border-slate-100 pt-4 dark:border-slate-700/60">
-          <NewsCard onSeeAll={onSeeNews} />
-        </div>
-
-        <p className="pt-1 text-[10px] leading-snug text-slate-400">
+        <p className="border-t border-slate-100 pt-3 text-[10px] leading-snug text-slate-400 dark:border-slate-700/60">
           Live aggregates over the NHTSA RV slice. Click a make to focus; click the trend or a component to ask.
         </p>
       </div>
