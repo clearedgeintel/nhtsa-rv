@@ -9,10 +9,23 @@ type Props = {
 };
 
 /** Link a "campaign_id:XXXX" source to NHTSA so the user can verify it. */
-function sourceLink(src: string): string | null {
+export function sourceLink(src: string): string | null {
   const [kind, id] = src.split(":");
   if (kind === "campaign_id") return `https://www.nhtsa.gov/recalls?nhtsaId=${id}`;
   return null;
+}
+
+/** Render the cited sources as a Markdown list (linked where a NHTSA URL exists). */
+export function sourcesToMarkdown(sources: string[] = [], hits: NarrativeHit[] = []): string {
+  const lines: string[] = [];
+  for (const s of sources) {
+    const href = sourceLink(s);
+    lines.push(href ? `- [${s}](${href})` : `- ${s}`);
+  }
+  for (const h of hits) {
+    if (!sources.some((s) => s.endsWith(`:${h.odi_id}`))) lines.push(`- ODI ${h.odi_id} — ${h.make_canonical}`);
+  }
+  return lines.join("\n");
 }
 
 /** Build + download a CSV of every cited source with NHTSA links. */
@@ -36,11 +49,18 @@ function exportCsv(sources: string[], hits: NarrativeHit[]) {
 
 export function Provenance({ sqlUsed, sources, narrativeHits, defaultOpen = false }: Props) {
   const [open, setOpen] = useState(defaultOpen);
+  const [copied, setCopied] = useState(false);
   const hasAny =
     (sqlUsed?.length ?? 0) > 0 || (sources?.length ?? 0) > 0 || (narrativeHits?.length ?? 0) > 0;
   if (!hasAny) return null;
 
   const canExport = (sources?.length ?? 0) > 0 || (narrativeHits?.length ?? 0) > 0;
+  function copySourcesMd() {
+    navigator.clipboard?.writeText(sourcesToMarkdown(sources ?? [], narrativeHits ?? [])).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
 
   return (
     <div className="mt-2 border-t border-slate-100 pt-2 dark:border-slate-700">
@@ -57,12 +77,21 @@ export function Provenance({ sqlUsed, sources, narrativeHits, defaultOpen = fals
           </span>
         </button>
         {canExport && (
-          <button
-            onClick={() => exportCsv(sources ?? [], narrativeHits ?? [])}
-            className="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
-          >
-            ⤓ Export sources
-          </button>
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={copySourcesMd}
+              className="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+              title="Copy all sources as a Markdown list"
+            >
+              {copied ? "✓ Copied" : "⧉ Copy as Markdown"}
+            </button>
+            <button
+              onClick={() => exportCsv(sources ?? [], narrativeHits ?? [])}
+              className="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+            >
+              ⤓ Export sources
+            </button>
+          </div>
         )}
       </div>
 

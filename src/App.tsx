@@ -365,17 +365,26 @@ export default function App() {
             </div>
           ) : (
             <ul className="space-y-5">
-              {messages.map((m, i) => (
-                <li key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
-                  {m.role === "user" ? (
-                    <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-slate-900 px-4 py-2.5 text-sm text-white shadow-sm dark:bg-slate-700">
-                      {m.content}
-                    </div>
-                  ) : (
-                    <AssistantMessage m={m} onExport={setReport} onFollowup={send} />
-                  )}
-                </li>
-              ))}
+              {(() => {
+                const firstAnswer = messages.findIndex((x) => x.role === "assistant");
+                return messages.map((m, i) => (
+                  <li key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
+                    {m.role === "user" ? (
+                      <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-slate-900 px-4 py-2.5 text-sm text-white shadow-sm dark:bg-slate-700">
+                        {m.content}
+                      </div>
+                    ) : (
+                      <AssistantMessage
+                        m={m}
+                        onExport={setReport}
+                        onFollowup={send}
+                        onRegenerate={send}
+                        openProvenance={i === firstAnswer}
+                      />
+                    )}
+                  </li>
+                ));
+              })()}
             </ul>
           )}
         </div>

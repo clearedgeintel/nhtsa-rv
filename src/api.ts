@@ -221,8 +221,11 @@ export async function getDataStatus(): Promise<DataStatus | null> {
 
 /** Classify how grounded an answer is, for the trust badge. */
 export function groundingOf(res: AskResponse): Grounding {
-  if ((res.sql_used?.length ?? 0) > 0) return "sql";
-  if ((res.narrative_hits?.length ?? 0) > 0) return "semantic";
+  const sql = (res.sql_used?.length ?? 0) > 0;
+  const sem = (res.narrative_hits?.length ?? 0) > 0;
+  if (sql && sem) return "hybrid";
+  if (sql) return "sql";
+  if (sem) return "semantic";
   return "none";
 }
 

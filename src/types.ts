@@ -30,7 +30,7 @@ export type AskResponse = {
 };
 
 /** How well-grounded an answer is, for the trust badge. */
-export type Grounding = "sql" | "semantic" | "none";
+export type Grounding = "sql" | "semantic" | "hybrid" | "none";
 
 /** A failure-mode row for the Explore taxonomy heatmap. */
 export type FailureModeRow = {

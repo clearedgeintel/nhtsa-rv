@@ -4,24 +4,58 @@ import { submitFeedback } from "../api";
 import { THINKING_MESSAGES } from "../lib/thinkingMessages";
 import { Markdown } from "./Markdown";
 import { Chart } from "./Chart";
-import { Provenance } from "./Provenance";
+import { Provenance, sourcesToMarkdown } from "./Provenance";
 
-const BADGE: Record<Grounding, { dot: string; label: string; cls: string }> = {
-  sql: { dot: "bg-emerald-500", label: "Grounded in data", cls: "text-emerald-700 dark:text-emerald-400" },
-  semantic: { dot: "bg-amber-500", label: "Semantic match", cls: "text-amber-700 dark:text-amber-400" },
-  none: { dot: "bg-slate-400", label: "No data sources", cls: "text-slate-600 dark:text-slate-400" },
+// Trust badge: icon + tint communicates HOW the answer was grounded (not color alone).
+const BADGE: Record<Grounding, { icon: string; label: string; cls: string }> = {
+  sql: {
+    icon: "▦",
+    label: "Grounded · SQL",
+    cls: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-800",
+  },
+  hybrid: {
+    icon: "◆",
+    label: "Hybrid · SQL + semantic",
+    cls: "bg-teal-50 text-teal-700 ring-teal-200 dark:bg-teal-900/30 dark:text-teal-300 dark:ring-teal-800",
+  },
+  semantic: {
+    icon: "≈",
+    label: "Semantic match",
+    cls: "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:ring-amber-800",
+  },
+  none: {
+    icon: "○",
+    label: "Ungrounded",
+    cls: "bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-700/50 dark:text-slate-300 dark:ring-slate-600",
+  },
 };
+
+/** Question + answer + sources as a portable Markdown block (for the Share action). */
+function answerMarkdown(m: ChatMessage): string {
+  const parts: string[] = [];
+  if (m.question) parts.push(`**Q:** ${m.question}`, "");
+  parts.push(m.content.trim());
+  const src = sourcesToMarkdown(m.sources ?? [], m.narrative_hits ?? []);
+  if (src) parts.push("", "**Sources**", src);
+  parts.push("", "_via RV Defect Intelligence_");
+  return parts.join("\n");
+}
 
 export function AssistantMessage({
   m,
   onExport,
   onFollowup,
+  onRegenerate,
+  openProvenance,
 }: {
   m: ChatMessage;
   onExport?: (m: ChatMessage) => void;
   onFollowup?: (q: string) => void;
+  onRegenerate?: (q: string) => void;
+  openProvenance?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
   const [rating, setRating] = useState<"up" | "down" | null>(null);
   // Rotating RV-themed "thinking" message while the answer streams.
   const [phrase, setPhrase] = useState(
@@ -38,16 +72,22 @@ export function AssistantMessage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.streaming]);
 
+  function flash(set: (v: boolean) => void) {
+    set(true);
+    setTimeout(() => set(false), 1500);
+  }
   function copy() {
-    navigator.clipboard?.writeText(m.content).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
+    navigator.clipboard?.writeText(m.content).then(() => flash(setCopied));
+  }
+  function share() {
+    navigator.clipboard?.writeText(answerMarkdown(m)).then(() => flash(setShared));
   }
   function rate(r: "up" | "down") {
     setRating(r);
     void submitFeedback(r, m);
   }
+  const btn =
+    "rounded px-1.5 py-0.5 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200";
 
   if (m.isError) {
     return (
@@ -58,38 +98,51 @@ export function AssistantMessage({
   }
 
   const badge = BADGE[m.grounding ?? "none"];
-  const autoOpen = (m.sources?.length ?? 0) > 5;
+  const autoOpen = openProvenance || (m.sources?.length ?? 0) > 5;
   const streaming = m.streaming;
 
   return (
     <div className="max-w-[92%] rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
       {!streaming && (
-        <div className="mb-1.5 flex items-center justify-between gap-2">
-          <span className={"inline-flex items-center gap-1.5 text-[11px] font-medium " + badge.cls}>
-            <span className={"h-1.5 w-1.5 rounded-full " + badge.dot} />
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <span
+            className={"inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 " + badge.cls}
+            title={
+              m.grounding === "hybrid"
+                ? "Answer combines SQL aggregates with semantic narrative search"
+                : m.grounding === "sql"
+                  ? "Answer is computed from SQL queries over the data"
+                  : m.grounding === "semantic"
+                    ? "Answer is based on semantic narrative matches"
+                    : "No tool results backed this answer — treat with caution"
+            }
+          >
+            <span aria-hidden>{badge.icon}</span>
             {badge.label}
           </span>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={copy}
-              className="rounded px-1.5 py-0.5 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-              title="Copy answer"
-            >
-              {copied ? "Copied" : "Copy"}
+          <div className="flex items-center gap-0.5">
+            <button onClick={copy} className={btn} title="Copy answer text">
+              {copied ? "✓ Copied" : "Copy"}
             </button>
+            <button onClick={share} className={btn} title="Copy question + answer + sources as Markdown">
+              {shared ? "✓ Copied" : "Share"}
+            </button>
+            {onRegenerate && m.question && (
+              <button onClick={() => onRegenerate(m.question!)} className={btn} title="Ask this question again">
+                ↻ Regenerate
+              </button>
+            )}
             {onExport && (
-              <button
-                onClick={() => onExport(m)}
-                className="rounded px-1.5 py-0.5 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-                title="Export as a PDF report"
-              >
+              <button onClick={() => onExport(m)} className={btn} title="Export as a PDF report">
                 Report
               </button>
             )}
+            <span className="mx-0.5 h-3 w-px bg-slate-200 dark:bg-slate-600" />
             <button
               onClick={() => rate("up")}
               className={"rounded px-1 py-0.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 " + (rating === "up" ? "opacity-100" : "opacity-50 hover:opacity-100")}
               title="Helpful"
+              aria-pressed={rating === "up"}
             >
               👍
             </button>
@@ -97,6 +150,7 @@ export function AssistantMessage({
               onClick={() => rate("down")}
               className={"rounded px-1 py-0.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 " + (rating === "down" ? "opacity-100" : "opacity-50 hover:opacity-100")}
               title="Not helpful"
+              aria-pressed={rating === "down"}
             >
               👎
             </button>
