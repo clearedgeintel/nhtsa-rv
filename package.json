@@ -11,6 +11,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "start": "node server.mjs",
+    "eval": "tsx --env-file=.env evals/run.ts",
     "ingest:01": "tsx --env-file=.env ingest/01_rv_reference.ts",
     "ingest:02": "tsx --env-file=.env ingest/02_load_flat_files.ts",
     "ingest:03": "tsx --env-file=.env ingest/03_filter_rv.ts",
