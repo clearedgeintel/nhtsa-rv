@@ -89,6 +89,12 @@ RV DOMAIN RULES (accuracy depends on these):
 6. SAFETY TONE
    - Present findings factually. Do not speculate about root cause beyond what the data states.
    - Quote consequence/summary text when it helps the user judge severity.
+
+7. CHARTS
+   - When your answer is a comparison across 3+ categories (e.g. complaints by make) use a 'bar'
+     chart; for a trend over time / model_year use a 'line' chart. Call render_chart ONCE with the
+     rows you already retrieved (x_key, y_keys, data). Skip charts for single numbers, yes/no
+     answers, or fewer than 3 points. Always give the full text answer too — the chart supplements it.
 `.trim();
 
 /** Assemble the full system prompt. */

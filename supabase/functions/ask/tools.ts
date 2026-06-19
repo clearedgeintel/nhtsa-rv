@@ -42,7 +42,51 @@ export const TOOL_DEFS = [
       required: ["query"],
     },
   },
+  {
+    name: "render_chart",
+    description:
+      "Attach a simple chart to your answer when results are a comparison across categories " +
+      "(use type 'bar') or a trend over time / model_year (use type 'line'). Pass the rows you " +
+      "already retrieved. Skip for single numbers or fewer than 3 data points. You must STILL " +
+      "give the full text answer; the chart only supplements it.",
+    input_schema: {
+      type: "object",
+      properties: {
+        type: { type: "string", enum: ["bar", "line"] },
+        title: { type: "string" },
+        x_key: { type: "string", description: "Field in each data row for the X axis / category." },
+        y_keys: { type: "array", items: { type: "string" }, description: "Numeric field name(s) to plot." },
+        data: {
+          type: "array",
+          description: "Up to 50 rows of {x_key, ...y_keys} objects.",
+          items: { type: "object" },
+        },
+      },
+      required: ["type", "title", "x_key", "y_keys", "data"],
+    },
+  },
 ];
+
+// ---- render_chart: validate + normalize a chart spec (the UI renders it with recharts) ----
+export type ChartSpec = {
+  type: "bar" | "line";
+  title: string;
+  x_key: string;
+  y_keys: string[];
+  data: Record<string, string | number>[];
+};
+
+export function renderChart(input: any): { ok: true; chart: ChartSpec } | { error: string } {
+  const type = input?.type === "line" ? "line" : "bar";
+  const title = typeof input?.title === "string" ? input.title : "";
+  const x_key = typeof input?.x_key === "string" ? input.x_key : "";
+  const y_keys = Array.isArray(input?.y_keys) ? input.y_keys.filter((k: unknown) => typeof k === "string") : [];
+  const data = Array.isArray(input?.data) ? input.data.slice(0, 50) : [];
+  if (!x_key || !y_keys.length || data.length < 2) {
+    return { error: "Invalid chart: need x_key, at least one y_key, and 2+ data rows." };
+  }
+  return { ok: true, chart: { type, title, x_key, y_keys, data } };
+}
 
 // ---- execute_sql: the cage ----
 export async function executeSql(input: { query: string }): Promise<unknown> {

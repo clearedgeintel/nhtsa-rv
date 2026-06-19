@@ -3,6 +3,7 @@ import { askAgent } from "./api";
 import type { ChatMessage } from "./types";
 import { Markdown } from "./components/Markdown";
 import { Provenance } from "./components/Provenance";
+import { Chart } from "./components/Chart";
 
 const EXAMPLES = [
   "How many recalls involve Winnebago, including chassis?",
@@ -40,6 +41,7 @@ export default function App() {
             sources: res.sources,
             sql_used: res.sql_used,
             narrative_hits: res.narrative_hits,
+            charts: res.charts,
           },
     ]);
     setLoading(false);
@@ -87,6 +89,7 @@ export default function App() {
                       }
                     >
                       <Markdown>{m.content}</Markdown>
+                      {m.charts?.map((c, ci) => <Chart key={ci} spec={c} />)}
                       <Provenance
                         sqlUsed={m.sql_used}
                         sources={m.sources}

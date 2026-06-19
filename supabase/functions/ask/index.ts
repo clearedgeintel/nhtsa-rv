@@ -4,7 +4,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { buildSystemPrompt } from "./domain.ts";
-import { TOOL_DEFS, executeSql, searchNarratives } from "./tools.ts";
+import { TOOL_DEFS, executeSql, searchNarratives, renderChart, type ChartSpec } from "./tools.ts";
 
 const MODEL = "claude-sonnet-4-6";
 const MAX_STEPS = 8;
@@ -47,6 +47,7 @@ function collectIds(result: any, into: Set<string>) {
 async function runTool(name: string, input: any): Promise<unknown> {
   if (name === "execute_sql") return executeSql(input);
   if (name === "search_narratives") return searchNarratives(input);
+  if (name === "render_chart") return renderChart(input);
   return { error: `Unknown tool ${name}` };
 }
 
@@ -73,6 +74,7 @@ Deno.serve(async (req) => {
 
   const sqlUsed: string[] = [];
   const narrativeHits: unknown[] = [];
+  const charts: ChartSpec[] = [];
   const sources = new Set<string>();
 
   try {
@@ -88,7 +90,7 @@ Deno.serve(async (req) => {
 
       if (res.stop_reason !== "tool_use") {
         const answer = res.content.filter((b) => b.type === "text").map((b: any) => b.text).join("\n").trim();
-        return json({ answer, sources: [...sources], sql_used: sqlUsed, narrative_hits: narrativeHits });
+        return json({ answer, sources: [...sources], sql_used: sqlUsed, narrative_hits: narrativeHits, charts });
       }
 
       // Execute each requested tool and feed results back.
@@ -99,6 +101,7 @@ Deno.serve(async (req) => {
         collectIds(result, sources);
         if (block.name === "execute_sql" && (result as any)?.sql_used) sqlUsed.push((result as any).sql_used);
         if (block.name === "search_narratives" && (result as any)?.hits) narrativeHits.push(...(result as any).hits);
+        if (block.name === "render_chart" && (result as any)?.chart) charts.push((result as any).chart);
         toolResults.push({
           type: "tool_result",
           tool_use_id: block.id,
@@ -109,7 +112,7 @@ Deno.serve(async (req) => {
     }
     return json({
       answer: "I wasn't able to finish within the step limit. Please narrow the question.",
-      sources: [...sources], sql_used: sqlUsed, narrative_hits: narrativeHits,
+      sources: [...sources], sql_used: sqlUsed, narrative_hits: narrativeHits, charts,
     });
   } catch (e) {
     return json({ error: `Agent error: ${String((e as Error)?.message ?? e)}` }, 500);
