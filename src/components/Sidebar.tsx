@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getDashboard } from "../api";
 import type { Dashboard } from "../types";
+import { NewsCard } from "./NewsFeed";
 
 /** A dependency-free SVG sparkline of recalls per year. */
 function Sparkline({ points }: { points: { year: number; recalls: number }[] }) {
@@ -82,7 +83,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 /** Persistent left-rail dashboard. Clicking an item asks the agent a scoped question. */
-export function Sidebar({ onAsk }: { onAsk: (q: string) => void }) {
+export function Sidebar({ onAsk, onSeeNews }: { onAsk: (q: string) => void; onSeeNews: () => void }) {
   const [data, setData] = useState<Dashboard | null>(null);
 
   useEffect(() => {
@@ -115,6 +116,10 @@ export function Sidebar({ onAsk }: { onAsk: (q: string) => void }) {
             onPick={(name) => onAsk(`Summarize the recalls and complaints for ${name}.`)}
           />
         </Section>
+
+        <div className="border-t border-slate-100 pt-4 dark:border-slate-700/60">
+          <NewsCard onSeeAll={onSeeNews} />
+        </div>
 
         <p className="pt-1 text-[10px] leading-snug text-slate-400">
           Live aggregates over the NHTSA RV slice. Click any item to ask about it.

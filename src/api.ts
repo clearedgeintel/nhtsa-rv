@@ -8,6 +8,7 @@ import type {
   ExploreOptions,
   FailureModeRow,
   Grounding,
+  NewsItem,
 } from "./types";
 
 const FN_URL = import.meta.env.VITE_ASK_FUNCTION_URL as string;
@@ -169,6 +170,19 @@ export async function getExploreOptions(): Promise<ExploreOptions | null> {
     return { makes, my_min: b.my_min, my_max: b.my_max, recv_min: b.recv_min, recv_max: b.recv_max };
   } catch {
     return null;
+  }
+}
+
+/** RV industry news — proxied + parsed server-side by the rv-news Edge Function (CORS). */
+export async function getRvNews(): Promise<{ items: NewsItem[]; fetched_at: string | null }> {
+  if (!SUPABASE_URL || !ANON) return { items: [], fetched_at: null };
+  try {
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/rv-news`, { headers: restHeaders() });
+    if (!r.ok) return { items: [], fetched_at: null };
+    const d = (await r.json()) as { items?: NewsItem[]; fetched_at?: string };
+    return { items: d.items ?? [], fetched_at: d.fetched_at ?? null };
+  } catch {
+    return { items: [], fetched_at: null };
   }
 }
 

@@ -73,6 +73,15 @@ export type ExploreOptions = {
   recv_max: number;
 };
 
+/** A headline from the RV news aggregator (rv-news Edge Function). */
+export type NewsItem = {
+  title: string;
+  link: string;
+  source: string;
+  published: string | null;
+  summary: string;
+};
+
 /** Aggregates for the persistent sidebar dashboard. */
 export type Dashboard = {
   trend: { year: number; recalls: number }[];

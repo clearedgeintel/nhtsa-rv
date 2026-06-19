@@ -5,6 +5,7 @@ import { AssistantMessage } from "./components/AssistantMessage";
 import { ReportView } from "./components/ReportView";
 import { TaxonomyBrowser } from "./components/TaxonomyBrowser";
 import { Sidebar } from "./components/Sidebar";
+import { NewsFeed } from "./components/NewsFeed";
 
 // Larger pools per category so the Shuffle button surfaces fresh prompts each time.
 const EXAMPLE_GROUPS = [
@@ -74,7 +75,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<DataStatus | null>(null);
   const [report, setReport] = useState<ChatMessage | null>(null);
-  const [view, setView] = useState<"ask" | "explore">("ask");
+  const [view, setView] = useState<"ask" | "explore" | "news">("ask");
   const [shuffle, setShuffle] = useState(0);
   // Two random prompts per category; re-rolled whenever the shuffle counter ticks.
   const examples = useMemo(
@@ -204,16 +205,16 @@ export default function App() {
               </p>
             )}
             <div className="mt-3 inline-flex rounded-lg bg-white/10 p-0.5 ring-1 ring-white/20 [text-shadow:none]">
-              {(["ask", "explore"] as const).map((v) => (
+              {(["ask", "explore", "news"] as const).map((v) => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
                   className={
-                    "rounded-md px-3 py-1 text-xs font-semibold transition " +
+                    "rounded-md px-3 py-1 text-xs font-semibold capitalize transition " +
                     (view === v ? "bg-white text-slate-900" : "text-slate-200 hover:text-white")
                   }
                 >
-                  {v === "ask" ? "Ask" : "Explore"}
+                  {v}
                 </button>
               ))}
             </div>
@@ -230,13 +231,19 @@ export default function App() {
       </header>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <Sidebar onAsk={askFromSidebar} />
+        <Sidebar onAsk={askFromSidebar} onSeeNews={() => setView("news")} />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
 
       {view === "explore" ? (
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
             <TaxonomyBrowser />
+          </div>
+        </main>
+      ) : view === "news" ? (
+        <main className="flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
+            <NewsFeed />
           </div>
         </main>
       ) : (
