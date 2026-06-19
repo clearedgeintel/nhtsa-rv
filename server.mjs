@@ -18,6 +18,7 @@ const MIME = {
   ".svg": "image/svg+xml", ".ico": "image/x-icon", ".webp": "image/webp",
   ".woff2": "font/woff2", ".woff": "font/woff", ".map": "application/json",
   ".txt": "text/plain; charset=utf-8",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
 };
 
 async function readDist(relPath) {
@@ -40,7 +41,10 @@ const server = createServer(async (req, res) => {
       data = await readDist("/index.html"); // SPA route → index.html
       ext = ".html";
     }
-    const cache = ext === ".html" ? "no-cache" : "public, max-age=31536000, immutable";
+    // Long-cache only content-hashed assets. The HTML shell, the service worker, and the
+    // manifest must revalidate so updates (and SW upgrades) actually propagate.
+    const noCache = ext === ".html" || ext === ".webmanifest" || pathname === "/sw.js";
+    const cache = noCache ? "no-cache" : "public, max-age=31536000, immutable";
     res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream", "Cache-Control": cache });
     res.end(data);
   } catch {

@@ -85,7 +85,8 @@ nice-to-haves: loading skeletons, fuller ARIA/keyboard nav.
   model-year-precise recall counts (the agent already does).
 - **TSBs not loaded** — the static zip currently 404s; a Socrata fallback exists but its
   column order differs. Wire up TSB ingest when the source is available.
-- Hero image (`public/rv.png`, ~2.7 MB) should be compressed/responsive.
+- ✅ Hero image compressed to responsive webp (`public/img/rv-{768,1536}.webp`, 60/205 KB)
+  + crisp logo thumbnail; old 2.6 MB `rv.png` removed. Shipped 2026-06-19.
 - `ask` rate limit is **best-effort in-memory** (per warm instance); move to a shared store
   (Postgres/Upstash) if abuse becomes a concern.
 - ~0.4% of classifications were off-vocabulary and normalized to `other`.

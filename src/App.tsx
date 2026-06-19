@@ -179,14 +179,25 @@ export default function App() {
     <div className="flex h-screen flex-col bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-100 print:hidden">
       {/* Hero header */}
       <header className="relative shrink-0 overflow-hidden">
-        <img src="/rv.png" alt="" className="absolute inset-0 h-full w-full object-cover object-right" />
+        <img
+          src="/img/rv-1536.webp"
+          srcSet="/img/rv-768.webp 768w, /img/rv-1536.webp 1536w"
+          sizes="100vw"
+          alt=""
+          fetchPriority="high"
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover object-right"
+        />
         <div className="absolute inset-0 bg-slate-950/70" />
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-950/40" />
         <div className="relative mx-auto flex w-full max-w-4xl items-start justify-between px-4 py-6 sm:px-6 [text-shadow:0_1px_3px_rgb(0_0_0_/_70%)]">
           <div className="flex items-start gap-3 sm:gap-4">
             <img
-              src="/rv.png"
+              src="/img/logo-256.webp"
               alt="RV Defect Intelligence"
+              width={64}
+              height={64}
+              decoding="async"
               className="h-14 w-14 shrink-0 rounded-xl object-cover shadow-lg ring-2 ring-white/40 sm:h-16 sm:w-16 [text-shadow:none]"
             />
           <div>
@@ -312,12 +323,13 @@ export default function App() {
                     <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                       {g.label}
                     </div>
-                    <div className="grid gap-2 sm:grid-cols-2">
+                    {/* Mobile: horizontal snap-scroll; sm+: two-up grid. */}
+                    <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0">
                       {g.items.map((ex) => (
                         <button
                           key={ex}
                           onClick={() => send(ex)}
-                          className="group flex items-center justify-between gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-left text-sm text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:bg-emerald-50/60 hover:shadow-md dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/20"
+                          className="group flex min-w-[82%] snap-start items-center justify-between gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-left text-sm text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:bg-emerald-50/60 hover:shadow-md dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/20 sm:min-w-0"
                         >
                           <span>{ex}</span>
                           <span
@@ -352,7 +364,7 @@ export default function App() {
       </main>
 
       {/* Composer */}
-      <footer className="shrink-0 border-t border-slate-200 bg-gradient-to-b from-slate-100 to-slate-200 px-4 py-4 dark:border-slate-700 dark:from-slate-900 dark:to-slate-950 sm:px-6">
+      <footer className="shrink-0 border-t border-slate-200 bg-gradient-to-b from-slate-100 to-slate-200 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-slate-700 dark:from-slate-900 dark:to-slate-950 sm:px-6">
         <form
           onSubmit={(e) => {
             e.preventDefault();
