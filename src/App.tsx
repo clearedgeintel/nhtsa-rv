@@ -246,9 +246,15 @@ export default function App() {
                         <button
                           key={ex}
                           onClick={() => send(ex)}
-                          className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-700 shadow-sm transition hover:border-emerald-400 hover:shadow dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-emerald-500"
+                          className="group flex items-center justify-between gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-left text-sm text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:bg-emerald-50/60 hover:shadow-md dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/20"
                         >
-                          {ex}
+                          <span>{ex}</span>
+                          <span
+                            aria-hidden
+                            className="shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-emerald-600 dark:text-slate-500"
+                          >
+                            →
+                          </span>
                         </button>
                       ))}
                     </div>
