@@ -36,21 +36,34 @@ async function countPending(): Promise<number> {
   return count ?? 0;
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function embedBatch(texts: string[]): Promise<number[][]> {
-  const res = await fetch("https://api.voyageai.com/v1/embeddings", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${env.voyageKey()}`,
-    },
-    body: JSON.stringify({ input: texts, model: MODEL, input_type: "document" }),
-  });
-  if (!res.ok) {
-    throw new Error(`Voyage ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  // Retry on 429/5xx with backoff. The Voyage free tier (no payment method) is limited to
+  // 3 RPM / 10K TPM, so we self-throttle on 429 (default 21s ≈ one slot) and resume.
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch("https://api.voyageai.com/v1/embeddings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.voyageKey()}`,
+      },
+      body: JSON.stringify({ input: texts, model: MODEL, input_type: "document" }),
+    });
+    if (res.ok) {
+      const json = (await res.json()) as { data: { embedding: number[]; index: number }[] };
+      return json.data.sort((a, b) => a.index - b.index).map((d) => d.embedding);
+    }
+    const body = (await res.text()).slice(0, 200);
+    if ((res.status === 429 || res.status >= 500) && attempt < 12) {
+      const retryAfter = Number(res.headers.get("retry-after"));
+      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 21000;
+      process.stdout.write(`  (Voyage ${res.status}; waiting ${Math.round(waitMs / 1000)}s)\n`);
+      await sleep(waitMs);
+      continue;
+    }
+    throw new Error(`Voyage ${res.status}: ${body}`);
   }
-  const json = (await res.json()) as { data: { embedding: number[]; index: number }[] };
-  // Preserve input order.
-  return json.data.sort((a, b) => a.index - b.index).map((d) => d.embedding);
 }
 
 /** pgvector wants a string literal like "[0.1,0.2,...]" over PostgREST. */
