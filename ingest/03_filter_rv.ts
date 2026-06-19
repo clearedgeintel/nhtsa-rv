@@ -16,7 +16,7 @@ import { streamRecords, parseDate, parseYear, parseInt0, clean } from "./lib/nht
 import { DATA_DIR } from "./lib/env.ts";
 import { resolveDataFile, type SourceKey } from "./lib/sources.ts";
 
-const RV_DEDICATED_CHASSIS = new Set(["SPARTAN", "WORKHORSE"]);
+const RV_DEDICATED_CHASSIS = new Set(["SPARTAN", "WORKHORSE", "PREVOST"]);
 const MOTORHOME_MODEL_RE =
   /MOTOR\s?HOME|CHASSIS|STRIPPED|\bF-?5[39]\b|SPRINTER|\bRV\b|RECREATION|MOTOR COACH/i;
 
@@ -58,6 +58,7 @@ async function loadDataset(
   console.log(`[${key}] reading ${file}`);
 
   const seen = new Set<string>();
+  const unmatched = new Map<string, number>(); // raw make → count (for empirical refinement)
   let buffer: Record<string, unknown>[] = [];
   let matched = 0, kept = 0, total = 0;
 
@@ -69,7 +70,11 @@ async function loadDataset(
 
   total = await streamRecords(file, async (f) => {
     const entry = matcher.match(f[rawMakeIdx]);
-    if (!entry) return;
+    if (!entry) {
+      const raw = (f[rawMakeIdx] ?? "").trim().toUpperCase();
+      if (raw) unmatched.set(raw, (unmatched.get(raw) ?? 0) + 1);
+      return;
+    }
     matched++;
     const model = clean(f[rawModelIdx]);
     if (!rvQualifies(entry, model)) return;
@@ -85,6 +90,13 @@ async function loadDataset(
   await flush();
 
   console.log(`[${key}] scanned ${total} rows → ${matched} RV-make matches → ${kept} unique ${table} loaded`);
+  // Surface high-frequency unmatched makes — these are candidates to add to the curated
+  // seed if any are RV brands we missed.
+  const top = [...unmatched.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
+  if (top.length) {
+    console.log(`[${key}] top unmatched makes (refine rv_makes_seed if any are RV):`);
+    for (const [mk, c] of top) console.log(`    ${String(c).padStart(7)}  ${mk}`);
+  }
 }
 
 // ---- Field index maps (0-based; see flat-file layouts) ----

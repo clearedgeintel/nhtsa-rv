@@ -39,14 +39,22 @@ export async function download(url: string, dest: string): Promise<void> {
   console.log(`  ↳ saved ${dest} (${(size / 1e6).toFixed(1)} MB)`);
 }
 
-/** Extract a .zip into a directory using the system `tar` (bsdtar ships with Windows 11). */
+/**
+ * Extract a .zip into a directory using bsdtar (handles zip).
+ * On Windows, resolve System32\tar.exe explicitly — a GNU `tar` from Git on PATH cannot
+ * read zips ("does not look like a tar archive").
+ */
 export async function extractZip(zipPath: string, destDir: string): Promise<void> {
   await mkdir(destDir, { recursive: true });
+  const tarBin =
+    process.platform === "win32" && process.env.WINDIR
+      ? `${process.env.WINDIR}\\System32\\tar.exe`
+      : "tar";
   await new Promise<void>((resolve, reject) => {
-    const p = spawn("tar", ["-xf", zipPath, "-C", destDir], { stdio: "inherit" });
+    const p = spawn(tarBin, ["-xf", zipPath, "-C", destDir], { stdio: "inherit" });
     p.on("error", reject);
     p.on("exit", (code) =>
-      code === 0 ? resolve() : reject(new Error(`tar exited ${code} for ${zipPath}`)),
+      code === 0 ? resolve() : reject(new Error(`${tarBin} exited ${code} for ${zipPath}`)),
     );
   });
 }

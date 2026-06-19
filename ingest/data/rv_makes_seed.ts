@@ -16,13 +16,16 @@ export type RvMakeSeed = {
 export const RV_MAKES_SEED: RvMakeSeed[] = [
   // ---- Motorhome chassis makes (chassis recalls are filed here; §6 chassis-vs-coach) ----
   { make_canonical: "FORD", make_variants: ["FORD", "FORD MOTOR COMPANY"], category: "chassis", is_motorhome_chassis: true },
-  { make_canonical: "FREIGHTLINER", make_variants: ["FREIGHTLINER", "FREIGHTLINER CUSTOM CHASSIS", "FREIGHTLINER CHASSIS"], category: "chassis", is_motorhome_chassis: true },
+  { make_canonical: "FREIGHTLINER", make_variants: ["FREIGHTLINER", "FREIGHTLINER CUSTOM CHASSIS", "FREIGHTLINER CHASSIS", "FCCC", "FREIGHTLINER CUSTOM CHASSIS CORPORATION"], category: "chassis", is_motorhome_chassis: true },
   { make_canonical: "MERCEDES-BENZ", make_variants: ["MERCEDES-BENZ", "MERCEDES BENZ", "MERCEDESBENZ"], category: "chassis", is_motorhome_chassis: true },
   { make_canonical: "SPARTAN", make_variants: ["SPARTAN", "SPARTAN MOTORS", "SPARTAN CHASSIS", "SPARTAN RV CHASSIS"], category: "chassis", is_motorhome_chassis: true },
   { make_canonical: "WORKHORSE", make_variants: ["WORKHORSE", "WORKHORSE CUSTOM CHASSIS"], category: "chassis", is_motorhome_chassis: true },
   { make_canonical: "CHEVROLET", make_variants: ["CHEVROLET", "CHEVY"], category: "chassis", is_motorhome_chassis: true },
   { make_canonical: "RAM", make_variants: ["RAM", "DODGE", "RAM TRUCKS"], category: "chassis", is_motorhome_chassis: true },
   { make_canonical: "INTERNATIONAL", make_variants: ["INTERNATIONAL", "NAVISTAR"], category: "chassis", is_motorhome_chassis: true },
+  // Prevost: bus shell / chassis base for luxury Class A conversions (Marathon, Liberty,
+  // Featherlite). Treated as RV-dedicated chassis so all its records are kept.
+  { make_canonical: "PREVOST", make_variants: ["PREVOST", "PREVOST CAR"], category: "chassis", is_motorhome_chassis: true },
 
   // ---- Motorhome / coach brands ----
   { make_canonical: "WINNEBAGO", make_variants: ["WINNEBAGO", "WINNEBAGO INDUSTRIES", "ITASCA"], category: "coach", is_motorhome_chassis: false },
