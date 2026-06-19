@@ -1,0 +1,6 @@
+# Supabase project config. The remote project ref is filled in after `create_project`
+# (and by `supabase link`). Migrations live in supabase/migrations/.
+project_id = "fregfziilhxrbpgpxrlo"
+
+[db]
+major_version = 17
