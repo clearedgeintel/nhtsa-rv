@@ -5,6 +5,7 @@ import { THINKING_MESSAGES } from "../lib/thinkingMessages";
 import { Markdown } from "./Markdown";
 import { Chart } from "./Chart";
 import { Provenance, sourcesToMarkdown } from "./Provenance";
+import { detectFailureModes, humanizeMode } from "../lib/failureModes";
 
 // Trust badge: icon + tint communicates HOW the answer was grounded (not color alone).
 const BADGE: Record<Grounding, { icon: string; label: string; cls: string }> = {
@@ -46,12 +47,14 @@ export function AssistantMessage({
   onExport,
   onFollowup,
   onRegenerate,
+  onExplore,
   openProvenance,
 }: {
   m: ChatMessage;
   onExport?: (m: ChatMessage) => void;
   onFollowup?: (q: string) => void;
   onRegenerate?: (q: string) => void;
+  onExplore?: (mode: string) => void;
   openProvenance?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
@@ -180,6 +183,25 @@ export function AssistantMessage({
             narrativeHits={m.narrative_hits}
             defaultOpen={autoOpen}
           />
+          {onExplore && (() => {
+            const modes = detectFailureModes(m.content, m.narrative_hits);
+            if (!modes.length) return null;
+            return (
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-medium text-slate-400">Explore in taxonomy:</span>
+                {modes.map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => onExplore(mode)}
+                    title={`Open the Explore tab filtered to "${humanizeMode(mode)}"`}
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 transition hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-300"
+                  >
+                    <span aria-hidden>⌕</span> {humanizeMode(mode)}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
           {!!m.followups?.length && onFollowup && (
             <div className="mt-3 border-t border-slate-100 pt-2.5 dark:border-slate-700">
               <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">

@@ -46,7 +46,8 @@ nice-to-haves: loading skeletons, fuller ARIA/keyboard nav.
 | ✅ **Weekly auto-refresh** — GitHub Actions runs the idempotent ingest weekly + stamps `app_meta`; the page shows the last-refresh date/counts | High | M | Shipped 2026-06-19 (`.github/workflows/refresh.yml`) |
 | ✅ **Streaming responses** — SSE through the function (token deltas + tool status) + live UI render with rotating RV-themed "thinking" messages; JSON mode kept for evals | High | M–L | Shipped 2026-06-19 |
 | ✅ **Auto-suggested follow-up chips** — a cheap haiku call returns 2–3 specific next questions (`followups`); rendered as clickable chips under each answer | Med | S | Shipped 2026-06-19 |
-| **Multi-RV comparison** affordance | Med | S | Already works via the agent; add a UI entry point + example |
+| ✅ **Multi-RV comparison** affordance — "⚖️ Compare RVs" button prefills an editable comparison template in the composer | Med | S | Shipped 2026-06-19 |
+| ✅ **Chat → Explore deep-links** — answers detect referenced failure modes and render "⌕ Explore in taxonomy" chips that open the Explore tab pre-filtered (`lib/failureModes.ts`) | Med | S | Shipped 2026-06-19 |
 | ✅ **RV news feed** — `rv-news` Edge Function aggregates RVBusiness / RV Travel / Google News RSS (dep-free parse, 30-min cache); a "News" tab + sidebar card render headlines | Med | M | Shipped 2026-06-19 |
 | ✅ **Component taxonomy browser** — "Explore" tab: failure-mode × severity frequency heatmap + drill-down to top components/makes (anon-readable aggregate views) | Med | M | Shipped 2026-06-19 |
 

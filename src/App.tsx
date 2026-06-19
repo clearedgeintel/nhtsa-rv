@@ -91,6 +91,7 @@ export default function App() {
       (!localStorage.getItem("theme") && window.matchMedia?.("(prefers-color-scheme: dark)").matches),
   );
   const scrollRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -188,6 +189,23 @@ export default function App() {
   const askFromSidebar = (q: string) => {
     setView("ask");
     send(q);
+  };
+
+  // Deep-link from a chat answer into the Explore tab, pre-selecting a failure mode.
+  const openInExplore = (mode: string) => {
+    const p = new URLSearchParams(window.location.search);
+    ["make", "myf", "myt", "rf", "rt", "detail"].forEach((k) => p.delete(k));
+    p.set("view", "explore");
+    p.set("mode", mode);
+    window.history.replaceState(null, "", `?${p.toString()}`);
+    setView("explore");
+  };
+
+  // Prefill the composer with an editable comparison template, then focus it.
+  const startComparison = () => {
+    setInput("Compare total recalls and the top complaint categories for Winnebago vs Grand Design, 2020–2025");
+    setView("ask");
+    requestAnimationFrame(() => composerRef.current?.focus());
   };
 
   const empty = messages.length === 0;
@@ -334,6 +352,13 @@ export default function App() {
                 >
                   <span aria-hidden>🔀</span> Shuffle
                 </button>
+                <button
+                  onClick={startComparison}
+                  title="Compare two RV makes side by side"
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition hover:border-emerald-500 hover:text-emerald-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-emerald-500 dark:hover:text-emerald-400"
+                >
+                  <span aria-hidden>⚖️</span> Compare RVs
+                </button>
               </div>
               <div className="mt-5 space-y-4">
                 {examples.map((g) => (
@@ -379,6 +404,7 @@ export default function App() {
                         onExport={setReport}
                         onFollowup={send}
                         onRegenerate={send}
+                        onExplore={openInExplore}
                         openProvenance={i === firstAnswer}
                       />
                     )}
@@ -400,6 +426,7 @@ export default function App() {
           className="mx-auto flex w-full max-w-4xl items-center gap-2 rounded-2xl border border-slate-300 bg-white p-2 pl-5 shadow-xl ring-1 ring-black/5 transition focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-300 dark:border-slate-600 dark:bg-slate-800 dark:ring-white/5 dark:focus-within:ring-emerald-700"
         >
           <input
+            ref={composerRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about a make, model year, defect, or trend…"
