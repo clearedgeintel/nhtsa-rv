@@ -28,6 +28,9 @@ export type AskResponse = {
   error?: string;
 };
 
+/** How well-grounded an answer is, for the trust badge. */
+export type Grounding = "sql" | "semantic" | "none";
+
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
@@ -36,5 +39,7 @@ export type ChatMessage = {
   sql_used?: string[];
   narrative_hits?: NarrativeHit[];
   charts?: ChartSpec[];
+  grounding?: Grounding;
+  question?: string; // the user question this answers (for feedback)
   isError?: boolean;
 };

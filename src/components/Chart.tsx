@@ -17,11 +17,11 @@ export function Chart({ spec }: { spec: ChartSpec }) {
     return out;
   });
 
-  const axisProps = { tick: { fontSize: 11 }, stroke: "#94a3b8" } as const;
+  const axisProps = { tick: { fontSize: 11, fill: "#94a3b8" }, stroke: "#94a3b8" } as const;
 
   return (
-    <figure className="my-3 rounded-lg border border-slate-200 bg-white p-3">
-      <figcaption className="mb-2 text-xs font-semibold text-slate-600">{title}</figcaption>
+    <figure className="my-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+      <figcaption className="mb-2 text-xs font-semibold text-slate-600 dark:text-slate-300">{title}</figcaption>
       <ResponsiveContainer width="100%" height={260}>
         {type === "line" ? (
           <LineChart data={rows} margin={{ top: 5, right: 16, bottom: 24, left: 0 }}>
