@@ -56,11 +56,53 @@ async function runTool(name: string, input: any): Promise<unknown> {
 
 type Emit = (e: Record<string, unknown>) => void;
 type AgentResult = {
-  answer: string; sources: string[]; sql_used: string[]; narrative_hits: unknown[]; charts: ChartSpec[];
+  answer: string; sources: string[]; sql_used: string[]; narrative_hits: unknown[];
+  charts: ChartSpec[]; followups: string[];
 };
 
+const FOLLOWUP_TOOL: Anthropic.Tool = {
+  name: "suggest_followups",
+  description: "Record 2–3 short, specific follow-up questions the user could ask next.",
+  input_schema: {
+    type: "object",
+    properties: {
+      questions: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 3 },
+    },
+    required: ["questions"],
+  },
+};
+
+/** Cheap haiku call: propose follow-up questions based on the Q&A. Best-effort. */
+async function generateFollowups(anthropic: Anthropic, question: string, answer: string): Promise<string[]> {
+  try {
+    const res = await anthropic.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 300,
+      system:
+        "You suggest concise follow-up questions for an NHTSA RV safety-data assistant. Each must be a " +
+        "short, specific, standalone question the user could ask next about RV recalls, complaints, " +
+        "investigations, or TSBs — building naturally on the conversation. No preamble.",
+      tools: [FOLLOWUP_TOOL],
+      tool_choice: { type: "tool", name: "suggest_followups" },
+      messages: [
+        { role: "user", content: `Question: ${question}\n\nAnswer: ${answer.slice(0, 1500)}\n\nSuggest 3 follow-ups.` },
+      ],
+    });
+    const block = res.content.find((b) => b.type === "tool_use") as Anthropic.ToolUseBlock | undefined;
+    const qs = (block?.input as { questions?: unknown })?.questions;
+    return Array.isArray(qs) ? qs.filter((q): q is string => typeof q === "string").slice(0, 3) : [];
+  } catch {
+    return [];
+  }
+}
+
 /** The agent loop. Streams text/status via `emit` and returns the final result. */
-async function runAgent(anthropic: Anthropic, messages: Anthropic.MessageParam[], emit: Emit): Promise<AgentResult> {
+async function runAgent(
+  anthropic: Anthropic,
+  messages: Anthropic.MessageParam[],
+  emit: Emit,
+  question: string,
+): Promise<AgentResult> {
   const sqlUsed: string[] = [];
   const narrativeHits: unknown[] = [];
   const charts: ChartSpec[] = [];
@@ -105,7 +147,8 @@ async function runAgent(anthropic: Anthropic, messages: Anthropic.MessageParam[]
   }
 
   if (!answer) answer = "I wasn't able to finish within the step limit. Please narrow the question.";
-  return { answer, sources: [...sources], sql_used: sqlUsed, narrative_hits: narrativeHits, charts };
+  const followups = await generateFollowups(anthropic, question, answer);
+  return { answer, sources: [...sources], sql_used: sqlUsed, narrative_hits: narrativeHits, charts, followups };
 }
 
 Deno.serve(async (req) => {
@@ -135,7 +178,7 @@ Deno.serve(async (req) => {
   // Non-streaming JSON (default — used by evals, curl, and any client that omits stream).
   if (!wantStream) {
     try {
-      const result = await runAgent(anthropic, messages, () => {});
+      const result = await runAgent(anthropic, messages, () => {}, question);
       return json(result);
     } catch (e) {
       return json({ error: `Agent error: ${String((e as Error)?.message ?? e)}` }, 500);
@@ -150,7 +193,7 @@ Deno.serve(async (req) => {
         try { controller.enqueue(enc.encode(`data: ${JSON.stringify(e)}\n\n`)); } catch { /* closed */ }
       };
       try {
-        const result = await runAgent(anthropic, messages, emit);
+        const result = await runAgent(anthropic, messages, emit, question);
         emit({ type: "done", ...result });
       } catch (e) {
         emit({ type: "error", error: `Agent error: ${String((e as Error)?.message ?? e)}` });

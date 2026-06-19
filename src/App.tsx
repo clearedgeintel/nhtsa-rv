@@ -117,6 +117,7 @@ export default function App() {
           sql_used: r.sql_used,
           narrative_hits: r.narrative_hits,
           charts: r.charts,
+          followups: r.followups,
           grounding: groundingOf(r),
           streaming: false,
           status: undefined,
@@ -271,7 +272,7 @@ export default function App() {
                       {m.content}
                     </div>
                   ) : (
-                    <AssistantMessage m={m} onExport={setReport} />
+                    <AssistantMessage m={m} onExport={setReport} onFollowup={send} />
                   )}
                 </li>
               ))}

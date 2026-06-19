@@ -25,6 +25,7 @@ export type AskResponse = {
   sql_used?: string[];
   narrative_hits?: NarrativeHit[];
   charts?: ChartSpec[];
+  followups?: string[];
   error?: string;
 };
 
@@ -59,6 +60,7 @@ export type ChatMessage = {
   sql_used?: string[];
   narrative_hits?: NarrativeHit[];
   charts?: ChartSpec[];
+  followups?: string[];
   grounding?: Grounding;
   question?: string; // the user question this answers (for feedback)
   isError?: boolean;

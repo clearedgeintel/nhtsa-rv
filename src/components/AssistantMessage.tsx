@@ -12,7 +12,15 @@ const BADGE: Record<Grounding, { dot: string; label: string; cls: string }> = {
   none: { dot: "bg-slate-400", label: "No data sources", cls: "text-slate-600 dark:text-slate-400" },
 };
 
-export function AssistantMessage({ m, onExport }: { m: ChatMessage; onExport?: (m: ChatMessage) => void }) {
+export function AssistantMessage({
+  m,
+  onExport,
+  onFollowup,
+}: {
+  m: ChatMessage;
+  onExport?: (m: ChatMessage) => void;
+  onFollowup?: (q: string) => void;
+}) {
   const [copied, setCopied] = useState(false);
   const [rating, setRating] = useState<"up" | "down" | null>(null);
   // Rotating RV-themed "thinking" message while the answer streams.
@@ -118,6 +126,25 @@ export function AssistantMessage({ m, onExport }: { m: ChatMessage; onExport?: (
             narrativeHits={m.narrative_hits}
             defaultOpen={autoOpen}
           />
+          {!!m.followups?.length && onFollowup && (
+            <div className="mt-3 border-t border-slate-100 pt-2.5 dark:border-slate-700">
+              <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                You might also ask
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {m.followups.map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => onFollowup(q)}
+                    className="group inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 transition hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-300"
+                  >
+                    {q}
+                    <span aria-hidden className="text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-emerald-600">→</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
