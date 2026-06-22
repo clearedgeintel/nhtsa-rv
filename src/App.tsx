@@ -6,6 +6,8 @@ import { ReportView } from "./components/ReportView";
 import { TaxonomyBrowser } from "./components/TaxonomyBrowser";
 import { Sidebar } from "./components/Sidebar";
 import { NewsFeed } from "./components/NewsFeed";
+import { AuthModal } from "./components/AuthModal";
+import { useAuthUser, signOut } from "./lib/auth";
 
 // Larger pools per category so the Shuffle button surfaces fresh prompts each time.
 const EXAMPLE_GROUPS = [
@@ -92,6 +94,8 @@ export default function App() {
   );
   const scrollRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLInputElement>(null);
+  const user = useAuthUser();
+  const [authOpen, setAuthOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -273,14 +277,36 @@ export default function App() {
             </div>
           </div>
           </div>
-          <button
-            onClick={() => setDark((d) => !d)}
-            className="shrink-0 rounded-lg bg-white/10 px-2 py-1.5 text-sm text-white ring-1 ring-white/20 backdrop-blur hover:bg-white/20 [text-shadow:none]"
-            title={dark ? "Switch to light mode" : "Switch to dark mode"}
-            aria-label="Toggle dark mode"
-          >
-            {dark ? "☀️" : "🌙"}
-          </button>
+          <div className="flex shrink-0 items-center gap-2 [text-shadow:none]">
+            {user ? (
+              <div className="flex items-center gap-2">
+                <span className="hidden max-w-[10rem] truncate text-xs text-slate-200 sm:inline" title={user.email ?? ""}>
+                  {user.email}
+                </span>
+                <button
+                  onClick={() => void signOut()}
+                  className="rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-medium text-white ring-1 ring-white/20 backdrop-blur hover:bg-white/20"
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setAuthOpen(true)}
+                className="rounded-lg bg-emerald-500/90 px-3 py-1.5 text-xs font-semibold text-white shadow-sm ring-1 ring-emerald-300/40 hover:bg-emerald-500"
+              >
+                Sign in
+              </button>
+            )}
+            <button
+              onClick={() => setDark((d) => !d)}
+              className="rounded-lg bg-white/10 px-2 py-1.5 text-sm text-white ring-1 ring-white/20 backdrop-blur hover:bg-white/20"
+              title={dark ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label="Toggle dark mode"
+            >
+              {dark ? "☀️" : "🌙"}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -450,6 +476,7 @@ export default function App() {
       </div>
     </div>
     {report && <ReportView message={report} />}
+    {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
     </>
   );
 }

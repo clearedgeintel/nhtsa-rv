@@ -54,6 +54,11 @@ nice-to-haves: loading skeletons, fuller ARIA/keyboard nav.
 ## Later — Needs accounts / infrastructure
 
 - **Supabase Auth** → per-user history, "My RV" saved profiles.
+  - ✅ Email + password sign-up / sign-in / sign-out via GoTrue REST (no supabase-js dep),
+    session persisted + auto-refreshed; header account control + modal. Shipped 2026-06-21
+    (`lib/auth.ts`, `AuthModal.tsx`). **Requires email confirmation OFF in Supabase Auth.**
+  - ⬜ Next: per-user chat history + saved VIN/"My RV" profiles (needs a `profiles`/`history`
+    table with RLS keyed to `auth.uid()`).
 - **Saved searches / watchlists + email alerts** ("new Winnebago Class A recalls 2020–2024")
   via Supabase cron + an Edge Function mailer.
 - ✅ **Persistent sidebar dashboard** — recall-trend sparkline, top defect components, top makes;
