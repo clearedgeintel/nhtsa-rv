@@ -48,6 +48,7 @@ nice-to-haves: loading skeletons, fuller ARIA/keyboard nav.
 | ✅ **Auto-suggested follow-up chips** — a cheap haiku call returns 2–3 specific next questions (`followups`); rendered as clickable chips under each answer | Med | S | Shipped 2026-06-19 |
 | ✅ **Multi-RV comparison** affordance — "⚖️ Compare RVs" button prefills an editable comparison template in the composer | Med | S | Shipped 2026-06-19 |
 | ✅ **Chat → Explore deep-links** — answers detect referenced failure modes and render "⌕ Explore in taxonomy" chips that open the Explore tab pre-filtered (`lib/failureModes.ts`) | Med | S | Shipped 2026-06-19 |
+| ✅ **Raw data viewer** — "Data" tab: spreadsheet-style browser over the `v_*` gold views (recalls/complaints/investigations/TSBs/makes) with sort, search, pagination, CSV export (`DataBrowser.tsx`, `lib/rawData.ts`, `0016_public_data_views.sql`) | Med | M | Shipped 2026-06-21 |
 | ✅ **RV news feed** — `rv-news` Edge Function aggregates RVBusiness / RV Travel / Google News RSS (dep-free parse, 30-min cache); a "News" tab + sidebar card render headlines | Med | M | Shipped 2026-06-19 |
 | ✅ **Component taxonomy browser** — "Explore" tab: failure-mode × severity frequency heatmap + drill-down to top components/makes (anon-readable aggregate views) | Med | M | Shipped 2026-06-19 |
 

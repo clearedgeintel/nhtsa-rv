@@ -4,6 +4,7 @@ import type { ChatMessage, DataStatus } from "./types";
 import { AssistantMessage } from "./components/AssistantMessage";
 import { ReportView } from "./components/ReportView";
 import { TaxonomyBrowser } from "./components/TaxonomyBrowser";
+import { DataBrowser } from "./components/DataBrowser";
 import { Sidebar } from "./components/Sidebar";
 import { NewsFeed } from "./components/NewsFeed";
 import { AuthModal } from "./components/AuthModal";
@@ -79,9 +80,9 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<DataStatus | null>(null);
   const [report, setReport] = useState<ChatMessage | null>(null);
-  const [view, setView] = useState<"ask" | "explore" | "news">(() => {
+  const [view, setView] = useState<"ask" | "explore" | "news" | "data">(() => {
     const v = new URLSearchParams(window.location.search).get("view");
-    return v === "explore" || v === "news" ? v : "ask";
+    return v === "explore" || v === "news" || v === "data" ? v : "ask";
   });
   const [shuffle, setShuffle] = useState(0);
   // Two random prompts per category; re-rolled whenever the shuffle counter ticks.
@@ -118,7 +119,7 @@ export default function App() {
       ["view", ...EXPLORE_KEYS].forEach((k) => p.delete(k));
     } else {
       p.set("view", view);
-      if (view === "news") EXPLORE_KEYS.forEach((k) => p.delete(k));
+      if (view !== "explore") EXPLORE_KEYS.forEach((k) => p.delete(k));
     }
     const qs = p.toString();
     window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
@@ -287,7 +288,7 @@ export default function App() {
               </p>
             )}
             <div className="mt-3 inline-flex rounded-lg bg-white/10 p-0.5 ring-1 ring-white/20 [text-shadow:none]">
-              {(["ask", "explore", "news"] as const).map((v) => (
+              {(["ask", "explore", "news", "data"] as const).map((v) => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
@@ -354,6 +355,12 @@ export default function App() {
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
             <NewsFeed />
+          </div>
+        </main>
+      ) : view === "data" ? (
+        <main className="flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+            <DataBrowser />
           </div>
         </main>
       ) : (
