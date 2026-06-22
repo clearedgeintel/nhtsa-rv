@@ -7,7 +7,9 @@ import { TaxonomyBrowser } from "./components/TaxonomyBrowser";
 import { Sidebar } from "./components/Sidebar";
 import { NewsFeed } from "./components/NewsFeed";
 import { AuthModal } from "./components/AuthModal";
+import { AccountPanel } from "./components/AccountPanel";
 import { useAuthUser, signOut } from "./lib/auth";
+import { saveChat, saveSearch, type ChatRow } from "./lib/userData";
 
 // Larger pools per category so the Shuffle button surfaces fresh prompts each time.
 const EXAMPLE_GROUPS = [
@@ -96,6 +98,7 @@ export default function App() {
   const composerRef = useRef<HTMLInputElement>(null);
   const user = useAuthUser();
   const [authOpen, setAuthOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -170,7 +173,7 @@ export default function App() {
     await askAgentStream(q, history, {
       onText: (d) => setLast((msg) => ({ ...msg, content: msg.content + d, status: undefined })),
       onStatus: (label) => setLast((msg) => ({ ...msg, status: label })),
-      onDone: (r) =>
+      onDone: (r) => {
         setLast((msg) => ({
           ...msg,
           content: r.answer || msg.content,
@@ -182,12 +185,34 @@ export default function App() {
           grounding: groundingOf(r),
           streaming: false,
           status: undefined,
-        })),
+        }));
+        // Persist to per-user history when signed in (best-effort, owner-scoped via RLS).
+        if (user && r.answer) {
+          void saveChat({ question: q, answer: r.answer, sources: r.sources, sql_used: r.sql_used, grounding: groundingOf(r) });
+        }
+      },
       onError: (e) =>
         setLast((msg) => ({ ...msg, content: `⚠️ ${e}`, isError: true, streaming: false, status: undefined })),
     });
     setLoading(false);
   }
+
+  // Reopen a saved conversation (question + answer) without re-querying.
+  const loadChat = (c: ChatRow) => {
+    setMessages([
+      { role: "user", content: c.question },
+      {
+        role: "assistant",
+        content: c.answer,
+        question: c.question,
+        sources: c.sources ?? undefined,
+        sql_used: c.sql_used ?? undefined,
+        grounding: (c.grounding as ChatMessage["grounding"]) ?? undefined,
+      },
+    ]);
+    setView("ask");
+    setAccountOpen(false);
+  };
 
   // Sidebar items jump into the Ask view with a scoped question.
   const askFromSidebar = (q: string) => {
@@ -280,9 +305,14 @@ export default function App() {
           <div className="flex shrink-0 items-center gap-2 [text-shadow:none]">
             {user ? (
               <div className="flex items-center gap-2">
-                <span className="hidden max-w-[10rem] truncate text-xs text-slate-200 sm:inline" title={user.email ?? ""}>
-                  {user.email}
-                </span>
+                <button
+                  onClick={() => setAccountOpen(true)}
+                  className="hidden max-w-[12rem] items-center gap-1 truncate rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-medium text-white ring-1 ring-white/20 backdrop-blur hover:bg-white/20 sm:inline-flex"
+                  title="Your account — history, saved RVs & searches"
+                >
+                  <span aria-hidden>👤</span>
+                  <span className="truncate">{user.email}</span>
+                </button>
                 <button
                   onClick={() => void signOut()}
                   className="rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-medium text-white ring-1 ring-white/20 backdrop-blur hover:bg-white/20"
@@ -431,6 +461,7 @@ export default function App() {
                         onFollowup={send}
                         onRegenerate={send}
                         onExplore={openInExplore}
+                        onSave={user ? (q) => void saveSearch({ label: q, query: q }) : undefined}
                         openProvenance={i === firstAnswer}
                       />
                     )}
@@ -477,6 +508,18 @@ export default function App() {
     </div>
     {report && <ReportView message={report} />}
     {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
+    {accountOpen && user && (
+      <AccountPanel
+        email={user.email}
+        onClose={() => setAccountOpen(false)}
+        onLoadChat={loadChat}
+        onAsk={(q) => {
+          setAccountOpen(false);
+          setView("ask");
+          send(q);
+        }}
+      />
+    )}
     </>
   );
 }

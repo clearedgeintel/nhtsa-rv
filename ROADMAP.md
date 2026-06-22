@@ -57,10 +57,14 @@ nice-to-haves: loading skeletons, fuller ARIA/keyboard nav.
   - ✅ Email + password sign-up / sign-in / sign-out via GoTrue REST (no supabase-js dep),
     session persisted + auto-refreshed; header account control + modal. Shipped 2026-06-21
     (`lib/auth.ts`, `AuthModal.tsx`). **Requires email confirmation OFF in Supabase Auth.**
-  - ⬜ Next: per-user chat history + saved VIN/"My RV" profiles (needs a `profiles`/`history`
-    table with RLS keyed to `auth.uid()`).
+  - ✅ Per-user data: chat history, saved VIN/"My RV" profiles, and saved searches —
+    owner-only RLS keyed to `auth.uid()` (`0015_user_data.sql`), token-authed PostgREST
+    client (`lib/userData.ts`), and an account slide-over (`AccountPanel.tsx`). History
+    auto-saves on each answer; "☆ Save" stores a question. Shipped 2026-06-21.
 - **Saved searches / watchlists + email alerts** ("new Winnebago Class A recalls 2020–2024")
   via Supabase cron + an Edge Function mailer.
+  - ✅ Saved searches (star a question → account panel). ⬜ Email alerts still to do
+    (cron diff over saved searches + Edge mailer).
 - ✅ **Persistent sidebar dashboard** — recall-trend sparkline, top defect components, top makes;
   each item clicks through to a scoped Ask question. Shipped 2026-06-19 (`Sidebar.tsx`,
   `v_dash_*` views in `0013_dashboard_views.sql`).

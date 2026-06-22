@@ -48,6 +48,7 @@ export function AssistantMessage({
   onFollowup,
   onRegenerate,
   onExplore,
+  onSave,
   openProvenance,
 }: {
   m: ChatMessage;
@@ -55,10 +56,12 @@ export function AssistantMessage({
   onFollowup?: (q: string) => void;
   onRegenerate?: (q: string) => void;
   onExplore?: (mode: string) => void;
+  onSave?: (q: string) => void;
   openProvenance?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [rating, setRating] = useState<"up" | "down" | null>(null);
   // Rotating RV-themed "thinking" message while the answer streams.
   const [phrase, setPhrase] = useState(
@@ -133,6 +136,18 @@ export function AssistantMessage({
             {onRegenerate && m.question && (
               <button onClick={() => onRegenerate(m.question!)} className={btn} title="Ask this question again">
                 ↻ Regenerate
+              </button>
+            )}
+            {onSave && m.question && (
+              <button
+                onClick={() => {
+                  onSave(m.question!);
+                  flash(setSaved);
+                }}
+                className={btn}
+                title="Save this question to your account"
+              >
+                {saved ? "✓ Saved" : "☆ Save"}
               </button>
             )}
             {onExport && (
